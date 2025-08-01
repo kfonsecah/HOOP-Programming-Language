@@ -1,0 +1,5 @@
+*__pycache__/
+.vscode/
+*.svg
+.venv/
+.DS_Store
