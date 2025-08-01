@@ -14,6 +14,7 @@ class Header(tk.Frame):
         # Guardar referencias a otros componentes
         self.sidebar = None
         self.content_area = None
+        self.toggle_terminal_command = None
 
         # --- Botones como Labels ---
         new_label = tk.Label(self, text="Nuevo", 
@@ -85,6 +86,10 @@ class Header(tk.Frame):
         """Guarda una referencia al área de contenido."""
         self.content_area = content_area
 
+    def set_toggle_terminal_command(self, command):
+        """Guarda el comando para mostrar/ocultar el terminal."""
+        self.toggle_terminal_command = command
+
     def create_new_project(self, event=None):
         """Abre un diálogo para seleccionar una carpeta y la carga en el sidebar."""
         # Pedir al usuario que seleccione una carpeta contenedora
@@ -138,6 +143,10 @@ class Header(tk.Frame):
         # Tipos de Datos
         menu.add_command(label="Tipos de Datos", 
                          command=lambda: self.insert_snippet("tipos_de_datos"))
+
+        menu.add_separator()
+        menu.add_command(label="Abrir/Cerrar Terminal",
+                         command=self.toggle_terminal_command)
 
         # Mostrar el menú en la posición del cursor
         menu.post(event.x_root, event.y_root)
