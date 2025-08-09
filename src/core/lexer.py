@@ -32,23 +32,26 @@ RESERVADAS = {
     "ensure",   # finally
     "throw",    # throw
     "fixed",    # const
-    "data",     # var
+    "data",     # var (tipado genérico/inferido)
     "action",   # fun
     "display"   # print, printf
 }
 
-# Tipos de datos
+# Tipos de datos (para tipado explícito)
 TIPOS = {
     # Simples
-    "logic",  # boolean
-    "whole",  # integer
-    "fract",  # decimal / float
-    "text",   # string
-    "char",
+    "logic",  # boolean - tipado explícito
+    "whole",  # integer - tipado explícito
+    "fract",  # decimal / float - tipado explícito
+    "text",   # string - tipado explícito
+    "char",   # character - tipado explícito
     # Compuestos
-    "grid",   # matrix
-    "chain"   # linked list
+    "grid",   # matrix - tipado explícito
+    "chain"   # linked list - tipado explícito
 }
+
+
+
 
 # Palabras pregonadas (built-in functions)
 PALABRAS_PREGONADAS = {
