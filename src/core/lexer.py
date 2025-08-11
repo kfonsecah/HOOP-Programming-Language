@@ -58,23 +58,6 @@ RESERVADAS = {
 #########################################
 
 """
-HOOP implementa POO BÁSICO con las siguientes características:
-
-✅ LO QUE SÍ TIENE:
-- Clases simples (mold)
-- Objetos y métodos (forge, action)
-- Atributos (todos públicos)
-- Constructor básico
-- Referencia a sí mismo (self)
-
-❌ LO QUE NO TIENE (comentado arriba):
-- Herencia (sin parent/super)
-- Polimorfismo (sin overriding)
-- Encapsulación (sin open/sealed/linked)
-- Interfaces (sin bond)
-- Enums (sin listing)
-- Structs separados (sin layout)
-- Packages/módulos (sin unit)
 
 EJEMPLO DE SINTAXIS POO BÁSICO:
 mold Persona {
@@ -517,7 +500,7 @@ class AnalizadorLexico:
         """Imprime todos los tokens de manera legible"""
         print("=== ELEMENTOS LÉXICOS GENERADOS ===")
         for i, token in enumerate(self.tokens):
-            if token.tipo != TokenType.NEWLINE:  # Omitir newlines para claridad
+            if token.tipo != TokenType.NEWLINE:  
                 print(f"{i+1:3}: {token}")
         
         if self.errores:
@@ -538,7 +521,7 @@ def analizar_codigo_hoop(codigo_fuente, mostrar_tokens=True):
         mostrar_tokens (bool): Si mostrar los tokens generados
     
     Returns:
-        tuple: (tokens, errores)
+        (tokens, errores)
     """
     print("=== ANALIZADOR LÉXICO HOOP ===")
     print(f"Código fuente:\n{codigo_fuente}\n")
@@ -559,79 +542,3 @@ def analizar_codigo_hoop(codigo_fuente, mostrar_tokens=True):
     
     return tokens, analizador.obtener_errores()
 
-# EJEMPLO DE USO - POO BÁSICO CON SINTAXIS ACTUALIZADA
-if __name__ == "__main__":
-    codigo_ejemplo = '''
-    # === Variables y operaciones aritméticas en palabras ===
-    whole a set 10;
-    whole b set 3;
-    whole c set a times b plus 2;      # c = (a * b) + 2
-    fract d set a divide b;            # d = a / b
-    whole r set a mod b;               # r = a % b
-
-    # === Lógicos y comparaciones en palabras ===
-    logic ok set (a greater 5) and (b lesseq 3);
-
-    # === Clase simple (POO básico) ===
-    mold Persona {
-        text nombre;
-        whole edad;
-
-        action construct(text n, whole e) {
-            self.nombre set n;
-            self.edad set e;
-        }
-
-        action saludar() {
-            display "Hola, soy " plus self.nombre;
-        }
-
-        action cumple() {
-            self.edad set self.edad plus 1;
-        }
-    }
-
-    # === Crear objeto y usar métodos ===
-    data p set forge Persona("Ana", 17);
-    p.saludar();
-
-    # === Condicional when / otherwise con operadores en palabras ===
-    when (p.edad greater 18) {
-        display "Mayor de edad";
-    } otherwise {
-        display "Menor de edad";
-    }
-
-    # === Bucle for básico con from/to ===
-    cycle i from 0 to 5 {
-        display "i = " plus i;
-        when (i equals 3) { halt; }
-    }
-
-    # === switch/select con case/default ===
-    select p.edad {
-        case 18: {
-            display "Tiene 18 exactos";
-            halt;
-        }
-        case 21: {
-            display "Tiene 21";
-            halt;
-        }
-        default: {
-            display "Otra edad";
-        }
-    }
-
-    # === Manejo de errores ===
-    attempt {
-        display "Probando operación peligrosa";
-        throw "falló algo";
-    } rescue {
-        display "Error capturado";
-    } ensure {
-        display "Fin de la operación";
-    }
-    '''
-    
-    analizar_codigo_hoop(codigo_ejemplo)
