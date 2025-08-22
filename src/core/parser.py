@@ -1,0 +1,585 @@
+# Parser estilo YACC para HOOP
+# Usa el lexer existente (tokens: Token.tipo es TokenType, Token.valor es string)
+from typing import List, Any, Optional
+from .lexer import TokenType, RESERVADAS, TIPOS, OPERADORES_PALABRAS, PALABRAS_PREGONADAS
+
+
+class ParseError:
+    def __init__(self, mensaje: str, linea: Optional[int] = None, columna: Optional[int] = None):
+        self.mensaje = mensaje
+        self.linea = linea
+        self.columna = columna
+
+    def __str__(self):
+        if self.linea is not None and self.columna is not None:
+            return f"Error sintáctico: {self.mensaje} en {self.linea}:{self.columna}"
+        return f"Error sintáctico: {self.mensaje}"
+
+
+class Parser:
+    """
+    Parser estilo YACC para un subconjunto de HOOP.
+
+    Gramática (resumida):
+      programa     -> (declaracion | clase)* EOF
+      declaracion  -> 'data' IDENTIFIER 'set' expresion ';'
+      clase        -> 'mold' IDENTIFIER '{' clase_cuerpo '}'
+      clase_cuerpo -> (atributo | metodo)*
+      atributo     -> TYPE IDENTIFIER ';'
+      metodo       -> 'action' IDENTIFIER '(' ')' '{' statements '}'   # métodos con cuerpo
+
+    El parser recibe una lista de tokens producida por AnalizadorLexico. No usa librerías externas.
+    """
+
+    def __init__(self, tokens: List[Any]):
+        self.tokens = tokens
+        self.pos = 0
+        self.errors: List[ParseError] = []
+        self.ast: List[Any] = []
+
+    # Utilidades
+    def current(self):
+        if self.pos < len(self.tokens):
+            return self.tokens[self.pos]
+        return None
+
+    def peek(self, offset=1):
+        idx = self.pos + offset
+        if idx < len(self.tokens):
+            return self.tokens[idx]
+        return None
+
+    def advance(self):
+        tok = self.current()
+        if tok is not None:
+            self.pos += 1
+        return tok
+
+    def add_error(self, mensaje: str, token=None):
+        if token is not None:
+            linea = getattr(token, 'linea', None)
+            columna = getattr(token, 'columna', None)
+            self.errors.append(ParseError(mensaje, linea, columna))
+        else:
+            self.errors.append(ParseError(mensaje))
+
+    def match(self, token_type: TokenType, token_value: Optional[str] = None):
+        """
+        Consume el token actual si coincide con token_type (y opcionalmente token_value).
+        Retorna el token consumido o None y registra error si no coincide.
+        """
+        tok = self.current()
+        if tok is None:
+            self.add_error(f"Se esperaba {token_type.name} pero se encontró fin de archivo")
+            return None
+
+        if tok.tipo == token_type and (token_value is None or tok.valor == token_value):
+            self.advance()
+            return tok
+        else:
+            esperado = token_value if token_value is not None else token_type.name
+            encontrado = f"{tok.tipo.name}('{tok.valor}')"
+            self.add_error(f"Se esperaba {esperado} pero se encontró {encontrado}", tok)
+            # Intento de recuperación simple: avanzar uno para evitar bucle infinito
+            self.advance()
+            return None
+
+    # Reglas
+    def parse(self):
+        self.ast = self.programa()
+        return self.ast
+
+    def programa(self):
+        nodes = []
+        while True:
+            tok = self.current()
+            if tok is None:
+                break
+            if tok.tipo == TokenType.EOF:
+                break
+
+            # Declaración global: data ...
+            if tok.tipo == TokenType.KEYWORD and tok.valor == 'data':
+                node = self.declaracion()
+                nodes.append(node)
+                continue
+
+            # Clase: mold ...
+            if tok.tipo == TokenType.KEYWORD and tok.valor == 'mold':
+                node = self.clase()
+                nodes.append(node)
+                continue
+
+            # Si encontramos un NEWLINE o COMMENT o WHITESPACE o DELIMITER inesperado, lo saltamos
+            if tok.tipo in (TokenType.NEWLINE, TokenType.COMMENT, TokenType.WHITESPACE):
+                self.advance()
+                continue
+
+            # Token inesperado en nivel superior
+            self.add_error(f"Elemento inesperado en nivel superior: {tok.tipo.name}('{tok.valor}')", tok)
+            self.advance()
+
+        # Consumir EOF final si existe
+        if self.current() and self.current().tipo == TokenType.EOF:
+            self.advance()
+
+        return nodes
+
+    def declaracion(self):
+        # 'data' IDENTIFIER 'set' expresion ';'
+        inicio = self.current()
+        self.match(TokenType.KEYWORD, 'data')
+        id_tok = self.match(TokenType.IDENTIFIER)
+        # 'set' puede ser WORD_OPERATOR
+        set_tok = None
+        if self.current() and self.current().tipo == TokenType.WORD_OPERATOR and self.current().valor == 'set':
+            set_tok = self.match(TokenType.WORD_OPERATOR, 'set')
+        else:
+            # intentar aceptar como KEYWORD por si el lexer clasificó distinto
+            set_tok = self.match(TokenType.KEYWORD, 'set')
+
+        # expresión simple: STRING, NUMBER, IDENTIFIER
+        expr_tok = self.current()
+        expr_node = None
+        if expr_tok and expr_tok.tipo in (TokenType.STRING, TokenType.NUMBER, TokenType.IDENTIFIER, TokenType.BOOLEAN):
+            expr_node = expr_tok
+            self.advance()
+        else:
+            self.add_error("Se esperaba una expresión (string/number/identifier/boolean) en la asignación", expr_tok)
+            # intentar recuperación: avanzar hasta punto y coma
+            while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == ';') and self.current().tipo != TokenType.EOF:
+                self.advance()
+
+        # punto y coma
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
+            self.match(TokenType.DELIMITER, ';')
+        else:
+            self.add_error("Falta ';' al final de la declaración", self.current())
+            # intentar sincronizar
+            while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == ';') and self.current().tipo != TokenType.EOF:
+                self.advance()
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
+                self.advance()
+
+        return {
+            'tipo': 'declaracion',
+            'identificador': getattr(id_tok, 'valor', None) if id_tok else None,
+            'valor': getattr(expr_node, 'valor', None) if expr_node else None,
+            'inicio': getattr(inicio, 'valor', None) if inicio else None
+        }
+
+    def clase(self):
+        # 'mold' IDENTIFIER '{' clase_cuerpo '}'
+        inicio = self.current()
+        self.match(TokenType.KEYWORD, 'mold')
+        id_tok = self.match(TokenType.IDENTIFIER)
+        # abrir llave
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+            self.match(TokenType.DELIMITER, '{')
+        else:
+            self.add_error("Se esperaba '{' para iniciar el cuerpo de la clase", self.current())
+
+        atributos = []
+        metodos = []
+
+        # cuerpo de la clase: cero o más atributos/metodos
+        while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '}') and self.current().tipo != TokenType.EOF:
+            tok = self.current()
+            if tok.tipo == TokenType.TYPE:
+                attr = self.atributo()
+                if attr:
+                    atributos.append(attr)
+                continue
+            if tok.tipo == TokenType.KEYWORD and tok.valor == 'action':
+                m = self.metodo()
+                if m:
+                    metodos.append(m)
+                continue
+
+            # saltar comentarios y newlines
+            if tok.tipo in (TokenType.NEWLINE, TokenType.COMMENT, TokenType.WHITESPACE):
+                self.advance()
+                continue
+
+            # elemento inesperado en cuerpo de clase
+            self.add_error(f"Elemento inesperado en cuerpo de clase: {tok.tipo.name}('{tok.valor}')", tok)
+            self.advance()
+
+        # cerrar llave
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+            self.match(TokenType.DELIMITER, '}')
+        else:
+            self.add_error("Falta '}' al final de la clase", self.current())
+
+        return {
+            'tipo': 'clase',
+            'nombre': getattr(id_tok, 'valor', None) if id_tok else None,
+            'atributos': atributos,
+            'metodos': metodos,
+            'inicio': getattr(inicio, 'valor', None) if inicio else None
+        }
+
+    def atributo(self):
+        # TYPE IDENTIFIER ';'
+        tipo_tok = self.match(TokenType.TYPE)
+        id_tok = self.match(TokenType.IDENTIFIER)
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
+            self.match(TokenType.DELIMITER, ';')
+        else:
+            self.add_error("Falta ';' al final de la declaración de atributo", self.current())
+            # intentar sincronizar
+            while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == ';') and self.current().tipo != TokenType.EOF:
+                self.advance()
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
+                self.advance()
+
+        return {
+            'tipo': 'atributo',
+            'data_type': getattr(tipo_tok, 'valor', None) if tipo_tok else None,
+            'nombre': getattr(id_tok, 'valor', None) if id_tok else None
+        }
+
+    # --- NUEVAS FUNCIONES: parseo de sentencias y if (hasta profundidad 2) ---
+    def parse_statements(self, max_depth=2, current_depth=1):
+        stmts = []
+        while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '}') and self.current().tipo != TokenType.EOF:
+            # Manejar bloque inesperado que empieza con '{' para evitar bucle infinito
+            if self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+                self.add_error("Bloque inesperado '{' — se descartará hasta el correspondiente '}'", self.current())
+                # consumir bloque completo con contador de llaves
+                depth = 0
+                while self.current() and not (self.current().tipo == TokenType.EOF):
+                    if self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+                        depth += 1
+                    elif self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+                        depth -= 1
+                        # avanzar para salir cuando depth < 0
+                        self.advance()
+                        if depth <= 0:
+                            break
+                        continue
+                    self.advance()
+                continue
+
+            # saltar comentarios/newlines
+            if self.current().tipo in (TokenType.NEWLINE, TokenType.COMMENT, TokenType.WHITESPACE):
+                self.advance()
+                continue
+            stmt = self.parse_statement(max_depth, current_depth)
+            if stmt:
+                stmts.append(stmt)
+            else:
+                # evitar bucle infinito: si parse_statement no avanzó, romper
+                self.advance()
+        return stmts
+
+    def parse_statement(self, max_depth, current_depth):
+        tok = self.current()
+        if tok is None:
+            return None
+
+        # If statement: 'when' ... '{' statements '}' ['otherwise' '{' statements '}']
+        if tok.tipo == TokenType.KEYWORD and tok.valor == 'when':
+            return self.parse_if_statement(max_depth, current_depth)
+
+        # Cycle statement: 'cycle' IDENTIFIER 'from' expr 'to' expr '{' statements '}'
+        if tok.tipo == TokenType.KEYWORD and tok.valor == 'cycle':
+            return self.parse_cycle_statement(max_depth, current_depth)
+
+        # Si encontramos un '{' aquí, consumir el bloque y reportar error para evitar estancamiento
+        if tok.tipo == TokenType.DELIMITER and tok.valor == '{':
+            self.add_error("Encontrado '{' inesperado en la posición de una sentencia; se descartará el bloque.", tok)
+            # consumir bloque completo
+            depth = 0
+            while self.current() and not (self.current().tipo == TokenType.EOF):
+                if self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+                    depth += 1
+                elif self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+                    depth -= 1
+                    self.advance()
+                    if depth <= 0:
+                        break
+                    continue
+                self.advance()
+            return None
+
+        # Simple expression/statement: consumir hasta ';' or '{' or '}'
+        expr_tokens = []
+        while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor in (';', '{', '}')) and self.current().tipo != TokenType.EOF:
+            expr_tokens.append(self.current())
+            self.advance()
+        # consumir ';' si existe
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
+            self.advance()
+            # sugerir si algún token IDENTIFIER en la expresión parece un typo de keyword
+            for tkn in expr_tokens:
+                if tkn.tipo == TokenType.IDENTIFIER:
+                    suggestion = self.suggest_similar_keyword(tkn.valor)
+                    if suggestion and suggestion != tkn.valor:
+                        self.add_error(f"Posible error tipográfico: '{tkn.valor}' — quiso '{suggestion}'?", tkn)
+            return {'tipo': 'expr_stmt', 'tokens': [t.valor for t in expr_tokens]}
+        else:
+            # si encontramos '{', no consumirlo aquí (el llamado debe manejar el bloque)
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+                # sugerir para identificadores en la expresión antes del bloque
+                for tkn in expr_tokens:
+                    if tkn.tipo == TokenType.IDENTIFIER:
+                        suggestion = self.suggest_similar_keyword(tkn.valor)
+                        if suggestion and suggestion != tkn.valor:
+                            self.add_error(f"Posible error tipográfico: '{tkn.valor}' — quiso '{suggestion}'?", tkn)
+                # devolver la expr sin consumir '{' para que el llamador lo procese o para que el bloque sea manejado
+                return {'tipo': 'expr_stmt', 'tokens': [t.valor for t in expr_tokens]}
+            # si no hay ';' y se encontró '}', puede ser fin del bloque; si no, marcar error
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+                if expr_tokens:
+                    # sugerir para identificadores
+                    for tkn in expr_tokens:
+                        if tkn.tipo == TokenType.IDENTIFIER:
+                            suggestion = self.suggest_similar_keyword(tkn.valor)
+                            if suggestion and suggestion != tkn.valor:
+                                self.add_error(f"Posible error tipográfico: '{tkn.valor}' — quiso '{suggestion}'?", tkn)
+                    return {'tipo': 'expr_stmt', 'tokens': [t.valor for t in expr_tokens]}
+                return None
+            self.add_error("Se esperaba ';' al final de la sentencia", self.current())
+            # sugerir para identificadores
+            for tkn in expr_tokens:
+                if tkn.tipo == TokenType.IDENTIFIER:
+                    suggestion = self.suggest_similar_keyword(tkn.valor)
+                    if suggestion and suggestion != tkn.valor:
+                        self.add_error(f"Posible error tipográfico: '{tkn.valor}' — quiso '{suggestion}'?", tkn)
+            return {'tipo': 'expr_stmt', 'tokens': [t.valor for t in expr_tokens]}
+
+    def parse_if_statement(self, max_depth, current_depth):
+        inicio = self.current()
+        self.match(TokenType.KEYWORD, 'when')
+
+        # condición: tomar tokens hasta '{'
+        cond_tokens = []
+        while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '{') and self.current().tipo != TokenType.EOF:
+            # prevenir que condition is empty
+            cond_tokens.append(self.current())
+            self.advance()
+
+        if not (self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{'):
+            self.add_error("Se esperaba '{' después de la condición de 'when'", self.current())
+            return {'tipo': 'if', 'cond': [t.valor for t in cond_tokens], 'body': [], 'otherwise': None}
+
+        # abrir bloque
+        self.match(TokenType.DELIMITER, '{')
+
+        # si alcanzamos la profundidad máxima, no permitir más 'when' dentro
+        body = []
+        if current_depth > max_depth:
+            # consumir hasta '}' pero comprobar y reportar si hay 'when' dentro
+            temp_pos = self.pos
+            nested_when_found = False
+            while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '}') and self.current().tipo != TokenType.EOF:
+                if self.current().tipo == TokenType.KEYWORD and self.current().valor == 'when':
+                    nested_when_found = True
+                    # registrar error y skip inner when entirely
+                    self.add_error("Profundidad máxima de 'when' alcanzada (no se permiten más anidamientos)", self.current())
+                self.advance()
+            # construir minimal body as raw tokens
+            # rewind to temp_pos to build tokens list (but we've already advanced; instead: we provide empty body)
+            body = []
+        else:
+            body = self.parse_statements(max_depth, current_depth + 1)
+
+        # cerrar bloque
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+            self.match(TokenType.DELIMITER, '}')
+        else:
+            self.add_error("Falta '}' al final del bloque de 'when'", self.current())
+
+        # optional 'otherwise' branch
+        otherwise = None
+        if self.current() and self.current().tipo == TokenType.KEYWORD and self.current().valor == 'otherwise':
+            self.match(TokenType.KEYWORD, 'otherwise')
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+                self.match(TokenType.DELIMITER, '{')
+                if current_depth > max_depth:
+                    # don't allow nested when inside otherwise
+                    while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '}') and self.current().tipo != TokenType.EOF:
+                        if self.current().tipo == TokenType.KEYWORD and self.current().valor == 'when':
+                            self.add_error("Profundidad máxima de 'when' alcanzada en 'otherwise'", self.current())
+                        self.advance()
+                    otherwise = []
+                else:
+                    otherwise = self.parse_statements(max_depth, current_depth + 1)
+                if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+                    self.match(TokenType.DELIMITER, '}')
+                else:
+                    self.add_error("Falta '}' al final del bloque 'otherwise'", self.current())
+            else:
+                self.add_error("Se esperaba '{' después de 'otherwise'", self.current())
+
+        return {
+            'tipo': 'if',
+            'cond': [t.valor for t in cond_tokens],
+            'body': body,
+            'otherwise': otherwise,
+            'inicio': getattr(inicio, 'valor', None) if inicio else None
+        }
+
+    def parse_cycle_statement(self, max_depth, current_depth):
+        inicio = self.current()
+        self.match(TokenType.KEYWORD, 'cycle')
+
+        # esperar IDENTIFIER (variable de control)
+        var_tok = None
+        if self.current() and self.current().tipo == TokenType.IDENTIFIER:
+            var_tok = self.match(TokenType.IDENTIFIER)
+        else:
+            self.add_error("Se esperaba identificador en 'cycle'", self.current())
+
+        # opcionalmente 'from' expr 'to' expr
+        from_tok = None
+        to_tok = None
+        start_expr = None
+        end_expr = None
+        if self.current() and self.current().tipo == TokenType.KEYWORD and self.current().valor == 'from':
+            from_tok = self.match(TokenType.KEYWORD, 'from')
+            if self.current() and self.current().tipo in (TokenType.NUMBER, TokenType.IDENTIFIER):
+                start_expr = self.current().valor
+                self.advance()
+            else:
+                self.add_error("Se esperaba expresión inicial después de 'from'", self.current())
+        if self.current() and self.current().tipo == TokenType.KEYWORD and self.current().valor == 'to':
+            to_tok = self.match(TokenType.KEYWORD, 'to')
+            if self.current() and self.current().tipo in (TokenType.NUMBER, TokenType.IDENTIFIER):
+                end_expr = self.current().valor
+                self.advance()
+            else:
+                self.add_error("Se esperaba expresión final después de 'to'", self.current())
+
+        # ahora esperar bloque '{' statements '}'
+        body = []
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+            self.match(TokenType.DELIMITER, '{')
+            body = self.parse_statements(max_depth, current_depth)
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+                self.match(TokenType.DELIMITER, '}')
+            else:
+                self.add_error("Falta '}' al final del bloque de 'cycle'", self.current())
+        else:
+            self.add_error("Se esperaba '{' para iniciar el bloque de 'cycle'", self.current())
+
+        return {
+            'tipo': 'cycle',
+            'var': getattr(var_tok, 'valor', None) if var_tok else None,
+            'from': start_expr,
+            'to': end_expr,
+            'body': body,
+            'inicio': getattr(inicio, 'valor', None) if inicio else None
+        }
+
+    def metodo(self):
+        # 'action' IDENTIFIER '(' ')' '{' '}'  (método con cuerpo hasta profundidad 2)
+        inicio = self.current()
+        self.match(TokenType.KEYWORD, 'action')
+        id_tok = self.match(TokenType.IDENTIFIER)
+        # paréntesis vacíos (aceptamos también parámetros en el futuro)
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '(':
+            self.match(TokenType.DELIMITER, '(')
+            # ignorar cualquier cosa hasta ')' por simplicidad ahora
+            while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == ')') and self.current().tipo != TokenType.EOF:
+                self.advance()
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ')':
+                self.match(TokenType.DELIMITER, ')')
+            else:
+                self.add_error("Falta ')' en la declaración del método", self.current())
+        else:
+            self.add_error("Falta '(' en la declaración del método", self.current())
+
+        # cuerpo del método: parsear sentencias con if anidados hasta 2 niveles
+        body = []
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+            self.match(TokenType.DELIMITER, '{')
+            body = self.parse_statements(max_depth=2, current_depth=1)
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+                self.match(TokenType.DELIMITER, '}')
+            else:
+                self.add_error("Falta '}' en el cuerpo del método", self.current())
+        else:
+            self.add_error("Falta '{' que inicia el cuerpo del método", self.current())
+
+        return {
+            'tipo': 'metodo',
+            'nombre': getattr(id_tok, 'valor', None) if id_tok else None,
+            'body': body,
+            'inicio': getattr(inicio, 'valor', None) if inicio else None
+        }
+
+    def levenshtein(self, a: str, b: str) -> int:
+        # distancia de Levenshtein iterativa (memoria O(min(len(a), len(b))))
+        if a == b:
+            return 0
+        if len(a) == 0:
+            return len(b)
+        if len(b) == 0:
+            return len(a)
+        # ensure a is shorter
+        if len(a) > len(b):
+            a, b = b, a
+        previous = list(range(len(a) + 1))
+        for i, cb in enumerate(b, start=1):
+            current = [i]
+            for j, ca in enumerate(a, start=1):
+                insertions = previous[j] + 1
+                deletions = current[j-1] + 1
+                substitutions = previous[j-1] + (0 if ca == cb else 1)
+                current.append(min(insertions, deletions, substitutions))
+            previous = current
+        return previous[-1]
+
+    def suggest_similar_keyword(self, word: str) -> Optional[str]:
+        # Normalizar colapsando repeticiones de la misma letra para detectar typos como 'displaaaaay' -> 'display'
+        def normalize(s: str) -> str:
+            if not s:
+                return s
+            out = [s[0]]
+            for ch in s[1:]:
+                if ch == out[-1]:
+                    # colapsar repeticiones
+                    continue
+                out.append(ch)
+            return ''.join(out)
+
+        # No sugerir para identificadores muy cortos (p. ej. variables de una letra como 'i')
+        if not word:
+            return None
+        norm_word = normalize(word.lower())
+        if len(norm_word) <= 1:
+            return None
+
+        candidates = set()
+        candidates.update(RESERVADAS)
+        candidates.update(TIPOS)
+        candidates.update(OPERADORES_PALABRAS)
+        candidates.update(PALABRAS_PREGONADAS)
+        w = norm_word
+        best = None
+        bestd = None
+        for c in candidates:
+            d = self.levenshtein(w, normalize(c.lower()))
+            if best is None or d < bestd:
+                best = c
+                bestd = d
+        # umbral: 3 o menos
+        if best is not None and bestd is not None and bestd <= 3:
+            return best
+        return None
+
+    # Accesores de errores
+    def tiene_errores(self):
+        return len(self.errors) > 0
+
+    def obtener_errores(self):
+        return self.errors
+
+
+# Helper simple para uso rápido
+def parse_tokens(tokens: List[Any]):
+    p = Parser(tokens)
+    ast = p.parse()
+    return ast, p.obtener_errores()
