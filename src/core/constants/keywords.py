@@ -35,7 +35,6 @@ KEYWORDS = [
     "data",     # var (tipado genérico/inferido)
     "action",   # fun
     "display",  # print, printf
-    "construct" # constructor
 ]
 
 # Tipos de datos del lenguaje HOOP

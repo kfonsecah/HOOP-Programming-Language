@@ -249,6 +249,17 @@ class Parser:
                 if m:
                     metodos.append(m)
                 continue
+            
+            # ELIMINAR: Ya no reconocemos 'construct' como válido
+            # Si alguien usa 'construct', será tratado como error
+            if tok.tipo == TokenType.KEYWORD and tok.valor == 'construct':
+                self.add_error("'construct' no es una palabra válida en HOOP. Use 'action' para definir métodos.", tok)
+                # Saltar hasta el siguiente ';' o '}'
+                while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor in (';', '}')) and self.current().tipo != TokenType.EOF:
+                    self.advance()
+                if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
+                    self.advance()
+                continue
 
             # saltar comentarios y newlines
             if tok.tipo in (TokenType.NEWLINE, TokenType.COMMENT, TokenType.WHITESPACE):
@@ -404,6 +415,14 @@ class Parser:
             return {'tipo': 'expr_stmt', 'tokens': [t.valor for t in expr_tokens]}
 
     def parse_if_statement(self, max_depth, current_depth):
+        # VERIFICAR PROFUNDIDAD ANTES DE PROCESAR
+        if current_depth > max_depth:
+            inicio = self.current()
+            self.add_error(f"Profundidad máxima de anidamiento alcanzada ({max_depth} niveles). No se permiten más estructuras 'when' anidadas.", inicio)
+            # Consumir toda la estructura 'when' sin procesarla
+            self.consume_when_structure()
+            return None
+
         inicio = self.current()
         self.match(TokenType.KEYWORD, 'when')
 
@@ -421,23 +440,8 @@ class Parser:
         # abrir bloque
         self.match(TokenType.DELIMITER, '{')
 
-        # si alcanzamos la profundidad máxima, no permitir más 'when' dentro
-        body = []
-        if current_depth > max_depth:
-            # consumir hasta '}' pero comprobar y reportar si hay 'when' dentro
-            temp_pos = self.pos
-            nested_when_found = False
-            while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '}') and self.current().tipo != TokenType.EOF:
-                if self.current().tipo == TokenType.KEYWORD and self.current().valor == 'when':
-                    nested_when_found = True
-                    # registrar error y skip inner when entirely
-                    self.add_error("Profundidad máxima de 'when' alcanzada (no se permiten más anidamientos)", self.current())
-                self.advance()
-            # construir minimal body as raw tokens
-            # rewind to temp_pos to build tokens list (but we've already advanced; instead: we provide empty body)
-            body = []
-        else:
-            body = self.parse_statements(max_depth, current_depth + 1)
+        # procesar cuerpo
+        body = self.parse_statements(max_depth, current_depth + 1)
 
         # cerrar bloque
         if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
@@ -451,15 +455,7 @@ class Parser:
             self.match(TokenType.KEYWORD, 'otherwise')
             if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
                 self.match(TokenType.DELIMITER, '{')
-                if current_depth > max_depth:
-                    # don't allow nested when inside otherwise
-                    while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '}') and self.current().tipo != TokenType.EOF:
-                        if self.current().tipo == TokenType.KEYWORD and self.current().valor == 'when':
-                            self.add_error("Profundidad máxima de 'when' alcanzada en 'otherwise'", self.current())
-                        self.advance()
-                    otherwise = []
-                else:
-                    otherwise = self.parse_statements(max_depth, current_depth + 1)
+                otherwise = self.parse_statements(max_depth, current_depth + 1)
                 if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
                     self.match(TokenType.DELIMITER, '}')
                 else:
@@ -474,6 +470,42 @@ class Parser:
             'otherwise': otherwise,
             'inicio': getattr(inicio, 'valor', None) if inicio else None
         }
+
+    def consume_when_structure(self):
+        """Consume una estructura 'when' completa sin procesarla (para manejo de profundidad máxima)"""
+        # Ya estamos en 'when', avanzar
+        self.advance()
+        
+        # Consumir condición hasta '{'
+        while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '{') and self.current().tipo != TokenType.EOF:
+            self.advance()
+        
+        # Consumir bloque principal
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+            self.consume_block()
+        
+        # Consumir 'otherwise' si existe
+        if self.current() and self.current().tipo == TokenType.KEYWORD and self.current().valor == 'otherwise':
+            self.advance()
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+                self.consume_block()
+
+    def consume_block(self):
+        """Consume un bloque completo {...} balanceando llaves"""
+        if not (self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{'):
+            return
+        
+        depth = 0
+        while self.current() and self.current().tipo != TokenType.EOF:
+            if self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+                depth += 1
+            elif self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+                depth -= 1
+                self.advance()
+                if depth <= 0:
+                    break
+                continue
+            self.advance()
 
     def parse_cycle_statement(self, max_depth, current_depth):
         inicio = self.current()
@@ -640,48 +672,76 @@ class Parser:
         return previous[-1]
 
     def suggest_similar_keyword(self, word: str) -> Optional[str]:
-        # Normalizar colapsando repeticiones de la misma letra para detectar typos como 'displaaaaay' -> 'display'
+        # No hacer sugerencias para identificadores que claramente son variables válidas
+        if not word:
+            return None
+            
+        # Lista expandida de palabras comunes que NO deben ser sugeridas como keywords
+        common_patterns = {
+            "mensaje", "resultado", "nombre", "valor", "datos", "info", "item", "objeto",
+            "nota1", "nota2", "nota3", "nota4", "nota5",  # Variables numéricas
+            "suma", "resta", "multiplicacion", "division", "promedio",  # Variables matemáticas
+            "estudiante", "persona", "cuenta", "usuario", "cliente",  # Entidades
+            "nivel", "cantidad", "saldo", "titular", "numero", "activa"  # Atributos comunes
+        }
+        
+        # No sugerir si es una palabra común
+        if word.lower() in common_patterns:
+            return None
+            
+        # No sugerir para identificadores que siguen patrones comunes
+        word_lower = word.lower()
+        
+        # Patrón: palabra + número (ej: nota1, variable2, etc.)
+        if len(word) > 2 and word_lower[-1].isdigit():
+            base_word = word_lower[:-1]
+            if any(base_word.startswith(pattern) for pattern in ["nota", "var", "dato", "item", "elem"]):
+                return None
+        
+        # Patrón: palabras compuestas (ej: calcularPromedio, evaluarEstudiante)
+        if len(word) > 8 and any(char.isupper() for char in word[1:]):
+            return None
+            
+        # No sugerir para palabras muy largas (probablemente nombres descriptivos)
+        if len(word) > 12:
+            return None
+
+        # Normalizar colapsando repeticiones
         def normalize(s: str) -> str:
             if not s:
                 return s
             out = [s[0]]
             for ch in s[1:]:
                 if ch == out[-1]:
-                    # colapsar repeticiones
                     continue
                 out.append(ch)
             return ''.join(out)
 
-        # No sugerir para identificadores muy cortos (p. ej. variables de una letra como 'i')
-        if not word:
-            return None
-        norm_word = normalize(word.lower())
-        if len(norm_word) <= 2:  # Cambiar de 1 a 2 para evitar sugerencias en palabras cortas
-            return None
-
-        # Lista de palabras comunes que NO deben ser sugeridas como keywords
-        common_words = {"mensaje", "resultado", "nombre", "valor", "datos", "info", "item", "objeto"}
-        if word.lower() in common_words:
+        norm_word = normalize(word_lower)
+        if len(norm_word) <= 2:
             return None
 
         candidates = set()
         candidates.update(RESERVADAS)
         candidates.update(TIPOS)
         candidates.update(OPERADORES_PALABRAS)
-        candidates.update(PALABRAS_PREGONADAS)
-        w = norm_word
-        best = None
-        bestd = None
-        for c in candidates:
-            d = self.levenshtein(w, normalize(c.lower()))
-            if best is None or d < bestd:
-                best = c
-                bestd = d
-        # umbral más estricto: 2 o menos para palabras comunes
-        threshold = 1 if len(word) <= 4 else 2
-        if best is not None and bestd is not None and bestd <= threshold:
-            return best
-        return None
+        
+        # ELIMINAR 'construct' de las candidatas para sugerencias
+        candidates.discard('construct')
+
+        best_candidate = None
+        best_distance = float('inf')
+        
+        for candidate in candidates:
+            norm_candidate = normalize(candidate.lower())
+            distance = self.levenshtein(norm_word, norm_candidate)
+            # Umbral ajustado
+            threshold = max(2, min(len(norm_word), len(norm_candidate)) // 2)
+            if distance <= threshold and distance < best_distance:
+                best_distance = distance
+                best_candidate = candidate
+        
+        return best_candidate
 
     # Accesores de errores
     def tiene_errores(self):

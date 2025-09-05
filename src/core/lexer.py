@@ -50,7 +50,7 @@ RESERVADAS = {
     "data",     # var (tipado genérico/inferido)
     "action",   # fun
     "display",  # print, printf
-    "construct" # constructor
+    # REMOVIDO: "construct" ya no es una palabra reservada válida en HOOP
 }
 
 #########################################
@@ -59,12 +59,13 @@ RESERVADAS = {
 
 """
 
-EJEMPLO DE SINTAXIS POO BÁSICO:
+EJEMPLO DE SINTAXIS POO BÁSICO (SIN CONSTRUCT):
 mold Persona {
     text nombre;
     whole edad;
     
-    action construct(text n, whole e) {
+    # Los constructores ahora se definen como métodos action normales
+    action inicializar(text n, whole e) {
         self.nombre set n;
         self.edad set e;
     }
@@ -91,7 +92,8 @@ mold Persona {
     }
 }
 
-data persona set forge Persona("Juan", 25);
+data persona set forge Persona();
+persona.inicializar("Juan", 25);
 persona.saludar();
 persona.clasificarEdad();
 """

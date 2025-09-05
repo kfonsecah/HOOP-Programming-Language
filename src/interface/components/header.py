@@ -120,7 +120,7 @@ class Header(tk.Frame):
                     activebackground='#3E4451', activeforeground=LETTER_COLOR,
                     bd=0)
 
-        # Ejemplos de código HOOP
+        # Ejemplos básicos de código HOOP
         ejemplos_menu = Menu(menu, tearoff=0, bg=BACKGROUND_COLOR, fg=LETTER_COLOR,
                              activebackground='#3E4451', activeforeground=LETTER_COLOR,
                              bd=0)
@@ -135,6 +135,42 @@ class Header(tk.Frame):
         ejemplos_menu.add_command(label="Ejemplo Completo", 
                                   command=lambda: self.insert_snippet("ejemplo_completo"))
         menu.add_cascade(label="Ejemplos HOOP", menu=ejemplos_menu)
+
+        # Tests de funcionalidad
+        tests_menu = Menu(menu, tearoff=0, bg=BACKGROUND_COLOR, fg=LETTER_COLOR,
+                          activebackground='#3E4451', activeforeground=LETTER_COLOR,
+                          bd=0)
+        tests_menu.add_command(label="Test Básico", 
+                               command=lambda: self.insert_snippet("test_basico"))
+        tests_menu.add_command(label="Test Operaciones", 
+                               command=lambda: self.insert_snippet("test_operaciones"))
+        tests_menu.add_command(label="Test Comparaciones", 
+                               command=lambda: self.insert_snippet("test_comparaciones"))
+        tests_menu.add_command(label="Test Control Flujo", 
+                               command=lambda: self.insert_snippet("test_control_flujo"))
+        tests_menu.add_command(label="Test Funciones Complejas", 
+                               command=lambda: self.insert_snippet("test_funciones_complejas"))
+        tests_menu.add_command(label="Test Clases Completas", 
+                               command=lambda: self.insert_snippet("test_clases_completas"))
+        menu.add_cascade(label="Tests Funcionales", menu=tests_menu)
+
+        # Tests de errores y casos límite
+        debug_menu = Menu(menu, tearoff=0, bg=BACKGROUND_COLOR, fg=LETTER_COLOR,
+                          activebackground='#3E4451', activeforeground=LETTER_COLOR,
+                          bd=0)
+        debug_menu.add_command(label="Errores Léxicos", 
+                               command=lambda: self.insert_snippet("test_errores_lexicos"))
+        debug_menu.add_command(label="Errores Sintácticos", 
+                               command=lambda: self.insert_snippet("test_errores_sintacticos"))
+        debug_menu.add_command(label="Casos Ambiguos", 
+                               command=lambda: self.insert_snippet("test_ambiguedades"))
+        debug_menu.add_command(label="Anidamiento Profundo", 
+                               command=lambda: self.insert_snippet("test_anidamiento_profundo"))
+        debug_menu.add_command(label="Expresiones Complejas", 
+                               command=lambda: self.insert_snippet("test_expresiones_complejas"))
+        debug_menu.add_command(label="Casos Límite", 
+                               command=lambda: self.insert_snippet("test_casos_limite"))
+        menu.add_cascade(label="Tests Debug", menu=debug_menu)
 
         menu.add_separator()
 
