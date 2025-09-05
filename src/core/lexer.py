@@ -231,9 +231,9 @@ class Token:
 
 class AnalizadorLexico:
     """
-    Analizador léxico para HOOP
+    Analizador lexico para HOOP
     Lee renglones sucesivos del programa de entrada,
-    los descompone en elementos léxicos individuales,
+    los descompone en elementos lexicos individuales,
     y alimenta estos elementos a las etapas posteriores.
     """
     
@@ -246,7 +246,7 @@ class AnalizadorLexico:
         self.errores = []
     
     def obtener_caracter_actual(self):
-        """Obtiene el carácter en la posición actual"""
+        """Obtiene el caracter en la posición actual"""
         if self.posicion >= len(self.codigo):
             return None
         return self.codigo[self.posicion]
@@ -361,7 +361,7 @@ class AnalizadorLexico:
             valor += self.obtener_caracter_actual()
             self.avanzar()
         
-        # Clasificar según las tablas definidas
+        # Clasificar segun las tablas definidas
         if valor in RESERVADAS:
             tipo = TokenType.KEYWORD
         elif valor in TIPOS:
