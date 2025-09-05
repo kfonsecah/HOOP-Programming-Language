@@ -101,18 +101,41 @@ class Parser:
             # Declaración global: data ...
             if tok.tipo == TokenType.KEYWORD and tok.valor == 'data':
                 node = self.declaracion()
-                nodes.append(node)
+                if node:
+                    nodes.append(node)
                 continue
 
             # Clase: mold ...
             if tok.tipo == TokenType.KEYWORD and tok.valor == 'mold':
                 node = self.clase()
-                nodes.append(node)
+                if node:
+                    nodes.append(node)
+                continue
+            
+            # Función global: action ...
+            if tok.tipo == TokenType.KEYWORD and tok.valor == 'action':
+                node = self.funcion_global()
+                if node:
+                    nodes.append(node)
                 continue
 
-            # Si encontramos un NEWLINE o COMMENT o WHITESPACE o DELIMITER inesperado, lo saltamos
+            # Statements globales (when, cycle, display, etc.)
+            if tok.tipo == TokenType.KEYWORD and tok.valor in ('when', 'cycle', 'display'):
+                node = self.parse_statement(max_depth=2, current_depth=1)
+                if node:
+                    nodes.append(node)
+                continue
+
+            # Si encontramos un NEWLINE o COMMENT o WHITESPACE, lo saltamos
             if tok.tipo in (TokenType.NEWLINE, TokenType.COMMENT, TokenType.WHITESPACE):
                 self.advance()
+                continue
+
+            # Expresiones simples a nivel global
+            if tok.tipo in (TokenType.IDENTIFIER, TokenType.STRING, TokenType.NUMBER, TokenType.BOOLEAN):
+                node = self.parse_simple_statement()
+                if node:
+                    nodes.append(node)
                 continue
 
             # Token inesperado en nivel superior
@@ -138,17 +161,8 @@ class Parser:
             # intentar aceptar como KEYWORD por si el lexer clasificó distinto
             set_tok = self.match(TokenType.KEYWORD, 'set')
 
-        # expresión simple: STRING, NUMBER, IDENTIFIER
-        expr_tok = self.current()
-        expr_node = None
-        if expr_tok and expr_tok.tipo in (TokenType.STRING, TokenType.NUMBER, TokenType.IDENTIFIER, TokenType.BOOLEAN):
-            expr_node = expr_tok
-            self.advance()
-        else:
-            self.add_error("Se esperaba una expresión (string/number/identifier/boolean) en la asignación", expr_tok)
-            # intentar recuperación: avanzar hasta punto y coma
-            while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == ';') and self.current().tipo != TokenType.EOF:
-                self.advance()
+        # expresión: puede ser literal simple o expresión compleja (incluyendo llamadas a función)
+        expr_value = self.parse_expression()
 
         # punto y coma
         if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
@@ -164,9 +178,49 @@ class Parser:
         return {
             'tipo': 'declaracion',
             'identificador': getattr(id_tok, 'valor', None) if id_tok else None,
-            'valor': getattr(expr_node, 'valor', None) if expr_node else None,
+            'valor': expr_value,
             'inicio': getattr(inicio, 'valor', None) if inicio else None
         }
+
+    def parse_expression(self):
+        """Parsea una expresión que puede ser un literal, identificador, operación o llamada a función"""
+        expr_tokens = []
+        paren_depth = 0
+        
+        # Leer tokens hasta encontrar ';' o llegar al final, teniendo en cuenta paréntesis
+        while self.current() and self.current().tipo != TokenType.EOF:
+            tok = self.current()
+            
+            # Si encontramos ';' y no estamos dentro de paréntesis, parar
+            if tok.tipo == TokenType.DELIMITER and tok.valor == ';' and paren_depth == 0:
+                break
+                
+            # Contar paréntesis para manejar llamadas a función
+            if tok.tipo == TokenType.DELIMITER and tok.valor == '(':
+                paren_depth += 1
+            elif tok.tipo == TokenType.DELIMITER and tok.valor == ')':
+                paren_depth -= 1
+                
+            # Si encontramos delimitadores de bloque y no estamos en paréntesis, parar
+            if tok.tipo == TokenType.DELIMITER and tok.valor in ('{', '}') and paren_depth == 0:
+                break
+                
+            expr_tokens.append(tok)
+            self.advance()
+        
+        # Construir el valor de la expresión
+        if not expr_tokens:
+            self.add_error("Se esperaba una expresión después de 'set'", self.current())
+            return None
+            
+        # Si es un solo token de tipo literal, devolver su valor
+        if len(expr_tokens) == 1:
+            token = expr_tokens[0]
+            if token.tipo in (TokenType.STRING, TokenType.NUMBER, TokenType.IDENTIFIER, TokenType.BOOLEAN):
+                return token.valor
+                
+        # Si es una expresión más compleja, devolver representación como string
+        return ' '.join(t.valor for t in expr_tokens)
 
     def clase(self):
         # 'mold' IDENTIFIER '{' clase_cuerpo '}'
@@ -510,6 +564,59 @@ class Parser:
             'inicio': getattr(inicio, 'valor', None) if inicio else None
         }
 
+    def funcion_global(self):
+        """Parsea una función a nivel global"""
+        inicio = self.current()
+        self.match(TokenType.KEYWORD, 'action')
+        id_tok = self.match(TokenType.IDENTIFIER)
+        
+        # paréntesis (pueden estar vacíos o con parámetros)
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '(':
+            self.match(TokenType.DELIMITER, '(')
+            # ignorar parámetros por ahora
+            while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == ')') and self.current().tipo != TokenType.EOF:
+                self.advance()
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ')':
+                self.match(TokenType.DELIMITER, ')')
+            else:
+                self.add_error("Falta ')' en la declaración de la función", self.current())
+        else:
+            self.add_error("Falta '(' en la declaración de la función", self.current())
+
+        # cuerpo de la función
+        body = []
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
+            self.match(TokenType.DELIMITER, '{')
+            body = self.parse_statements(max_depth=2, current_depth=1)
+            if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '}':
+                self.match(TokenType.DELIMITER, '}')
+            else:
+                self.add_error("Falta '}' en el cuerpo de la función", self.current())
+        else:
+            self.add_error("Falta '{' que inicia el cuerpo de la función", self.current())
+
+        return {
+            'tipo': 'funcion_global',
+            'nombre': getattr(id_tok, 'valor', None) if id_tok else None,
+            'body': body,
+            'inicio': getattr(inicio, 'valor', None) if inicio else None
+        }
+
+    def parse_simple_statement(self):
+        """Parsea una statement simple a nivel global"""
+        expr_tokens = []
+        while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == ';') and self.current().tipo not in (TokenType.EOF, TokenType.NEWLINE):
+            expr_tokens.append(self.current())
+            self.advance()
+        
+        # consumir ';' si existe
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
+            self.advance()
+        
+        if expr_tokens:
+            return {'tipo': 'expr_stmt_global', 'tokens': [t.valor for t in expr_tokens]}
+        return None
+
     def levenshtein(self, a: str, b: str) -> int:
         # distancia de Levenshtein iterativa (memoria O(min(len(a), len(b))))
         if a == b:
@@ -549,7 +656,12 @@ class Parser:
         if not word:
             return None
         norm_word = normalize(word.lower())
-        if len(norm_word) <= 1:
+        if len(norm_word) <= 2:  # Cambiar de 1 a 2 para evitar sugerencias en palabras cortas
+            return None
+
+        # Lista de palabras comunes que NO deben ser sugeridas como keywords
+        common_words = {"mensaje", "resultado", "nombre", "valor", "datos", "info", "item", "objeto"}
+        if word.lower() in common_words:
             return None
 
         candidates = set()
@@ -565,8 +677,9 @@ class Parser:
             if best is None or d < bestd:
                 best = c
                 bestd = d
-        # umbral: 3 o menos
-        if best is not None and bestd is not None and bestd <= 3:
+        # umbral más estricto: 2 o menos para palabras comunes
+        threshold = 1 if len(word) <= 4 else 2
+        if best is not None and bestd is not None and bestd <= threshold:
             return best
         return None
 
