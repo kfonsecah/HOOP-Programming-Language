@@ -6,60 +6,141 @@ CODE_SNIPPETS = {
         "code": """# --- Palabras Reservadas en HOOP ---
 
 # Definición de funciones y clases
-def  # Define una función
-class  # Define una clase
-return # Devuelve un valor de una función
+mold  # Define una clase
+action  # Define una función
+answer # Devuelve un valor de una función
 
 # Control de flujo
-if # Condicional
-else # Alternativa a if
-elif # Alternativa condicional
-for # Bucle for
-while # Bucle while
-break # Rompe un bucle
-continue # Salta a la siguiente iteración
+when # Condicional
+otherwise # Alternativa a when
+cycle # Bucle cycle
+from # Desde (en ciclos)
+to # Hasta (en ciclos)
 
-# Operadores lógicos y de pertenencia
-and # Y lógico
-or # O lógico
-not # Negación lógica
-in # Pertenencia
+# Declaración
+data # Variable
+set # Asignación
+display # Imprimir
 
-# Valores nulos y booleanos
-None # Representa la ausencia de valor
-True # Valor booleano verdadero
-False # Valor booleano falso
+# Tipos
+whole # Entero
+text # Cadena
+logic # Booleano
+fract # Decimal
 
-# Manejo de excepciones
-try # Bloque para código que puede fallar
-except # Captura de excepciones
-finally # Se ejecuta siempre
-raise # Lanza una excepción
+# Operadores
+plus # Suma
+minus # Resta
+times # Multiplicación
+divide # División
+greater # Mayor que
+less # Menor que
+equals # Igual
+"""
+    },
+    "ejemplo_basico": {
+        "title": "Ejemplo Básico HOOP",
+        "code": """# Ejemplo básico de código HOOP
+data mensaje set "Hola mundo desde HOOP";
+data numero set 42;
+data activo set true;
+
+display mensaje;
+display numero;
+"""
+    },
+    "ejemplo_clase": {
+        "title": "Ejemplo de Clase",
+        "code": """# Ejemplo de clase en HOOP
+mold Persona {
+    text nombre;
+    whole edad;
+    
+    action saludar() {
+        display "Hola, soy una persona";
+    }
+}
+
+data p set "objeto creado";
+"""
+    },
+    "ejemplo_control": {
+        "title": "Ejemplo de Control de Flujo",
+        "code": """# Ejemplo de estructuras de control
+data x set 10;
+data y set 5;
+
+when x greater y {
+    display "x es mayor que y";
+} otherwise {
+    display "y es mayor o igual que x";
+}
+
+cycle i from 1 to 5 {
+    display i;
+}
+"""
+    },
+    "ejemplo_funcion": {
+        "title": "Ejemplo de Función",
+        "code": """# Ejemplo de función
+action sumar() {
+    data a set 5;
+    data b set 3;
+    data resultado set a plus b;
+    display resultado;
+}
+
+data test set "función definida";
+"""
+    },
+    "ejemplo_completo": {
+        "title": "Ejemplo Completo HOOP",
+        "code": """# Ejemplo completo que combina varios elementos
+mold Calculadora {
+    whole resultado;
+    
+    action sumar() {
+        data a set 10;
+        data b set 20;
+        resultado set a plus b;
+        display resultado;
+    }
+    
+    action mostrarResultado() {
+        when resultado greater 0 {
+            display "El resultado es positivo";
+        } otherwise {
+            display "El resultado es cero o negativo";
+        }
+    }
+}
+
+data calc set "calculadora creada";
+data contador set 0;
+
+cycle i from 1 to 3 {
+    contador set contador plus 1;
+    display contador;
+}
 """
     },
     "sintaxis_control": {
         "title": "Sintaxis: Control de Flujo",
         "code": """# --- Sintaxis de Control de Flujo ---
 
-# Estructura if-elif-else
-if condicion_1:
+# Estructura when-otherwise
+when condicion_1 {
     # Código si condicion_1 es verdadera
-elif condicion_2:
-    # Código si condicion_2 es verdadera
-else:
-    # Código si ninguna es verdadera
+} otherwise {
+    # Código si es falsa
+}
 
-# Bucle while
-while condicion:
-    # Código a repetir mientras la condición sea verdadera
-    if otra_condicion:
-        break  # Salir del bucle
-
-# Bucle for
-for elemento in iterable:
-    # Código a ejecutar para cada elemento
-    if alguna_condicion:
-        continue # Saltar al siguiente elemento
+# Bucle cycle
+cycle i from 1 to 10 {
+    # Código a repetir
+    display i;
+}
 """
     },
     "sintaxis_funciones": {
@@ -67,18 +148,15 @@ for elemento in iterable:
         "code": """# --- Sintaxis de Funciones ---
 
 # Definición de una función simple
-def mi_funcion():
-    print("Hola desde una función")
+action mi_funcion() {
+    display "Hola desde una función";
+}
 
-# Definición con parámetros y valor de retorno
-def suma(a, b):
-    resultado = a + b
-    return resultado
-
-# Llamada a las funciones
-mi_funcion()
-valor_suma = suma(5, 3)
-print(f"El resultado de la suma es {valor_suma}")
+# Función con variables locales
+action calcular() {
+    data resultado set 5 plus 3;
+    display resultado;
+}
 """
     },
     "sintaxis_operaciones": {
@@ -86,22 +164,15 @@ print(f"El resultado de la suma es {valor_suma}")
         "code": """# --- Sintaxis de Operaciones ---
 
 # Operaciones Aritméticas
-suma = 10 + 5
-resta = 10 - 5
-multiplicacion = 10 * 5
-division = 10 / 5
-modulo = 10 % 3  # Residuo
+data suma set 10 plus 5;
+data resta set 10 minus 5;
+data multiplicacion set 10 times 5;
+data division set 10 divide 5;
 
 # Operaciones de Comparación
-es_igual = (a == b)
-no_es_igual = (a != b)
-mayor_que = (a > b)
-menor_o_igual = (a <= b)
-
-# Operaciones Lógicas
-y_logico = (condicion1 and condicion2)
-o_logico = (condicion1 or condicion2)
-negacion = not condicion1
+data es_mayor set 10 greater 5;
+data es_menor set 5 less 10;
+data es_igual set 5 equals 5;
 """
     },
     "semantica": {
@@ -113,50 +184,32 @@ negacion = not condicion1
 # Asignación de variables:
 # El nombre 'edad' tiene el significado semántico de
 # representar la edad de una persona.
-edad = 25
-
-# Invocación de funciones:
-# Semánticamente, esto significa "ejecutar la lógica
-# para calcular un área".
-area = calcular_area(10, 5)
+data edad set 25;
 
 # Un código es semánticamente correcto si hace lo que
 # el programador intentaba que hiciera.
-# Por ejemplo, si 'calcular_area' restara en lugar de
-# multiplicar, sería sintácticamente correcto pero
-# semánticamente incorrecto.
+display edad;
 """
     },
     "tipos_de_datos": {
         "title": "Tipos de Datos",
         "code": """# --- Tipos de Datos en HOOP ---
 
-# Tipo Entero (Integer)
-numero_entero = 42
+# Tipo Entero (whole)
+data numero_entero set 42;
 
-# Tipo Flotante (Float)
-numero_flotante = 3.14159
+# Tipo Decimal (fract)
+data numero_decimal set 3.14;
 
-# Tipo Cadena de Texto (String)
-saludo = "Hola, mundo!"
-otro_texto = 'También con comillas simples'
+# Tipo Cadena de Texto (text)
+data saludo set "Hola, mundo!";
 
-# Tipo Booleano (Boolean)
-es_verdadero = True
-es_falso = False
+# Tipo Booleano (logic)
+data es_verdadero set true;
+data es_falso set false;
 
-# Tipo Lista (List) - Colección ordenada y mutable
-mi_lista = [1, "manzana", 3.0, True]
-
-# Tipo Diccionario (Dictionary) - Colección clave-valor
-mi_diccionario = {
-    "nombre": "Alex",
-    "edad": 30,
-    "es_estudiante": False
-}
-
-# Tipo Nulo (NoneType)
-sin_valor = None
+display numero_entero;
+display saludo;
 """
     }
 }

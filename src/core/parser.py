@@ -239,7 +239,7 @@ class Parser:
             'nombre': getattr(id_tok, 'valor', None) if id_tok else None
         }
 
-    # --- NUEVAS FUNCIONES: parseo de sentencias y if (hasta profundidad 2) ---
+    # ---parseo de sentencias y if (hasta profundidad 2) ---
     def parse_statements(self, max_depth=2, current_depth=1):
         stmts = []
         while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '}') and self.current().tipo != TokenType.EOF:
@@ -474,7 +474,7 @@ class Parser:
         }
 
     def metodo(self):
-        # 'action' IDENTIFIER '(' ')' '{' '}'  (método con cuerpo hasta profundidad 2)
+        # 'action' IDENTIFIER '(' ')' '{' '}'  (metodo con cuerpo hasta profundidad 2)
         inicio = self.current()
         self.match(TokenType.KEYWORD, 'action')
         id_tok = self.match(TokenType.IDENTIFIER)

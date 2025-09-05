@@ -120,6 +120,24 @@ class Header(tk.Frame):
                     activebackground='#3E4451', activeforeground=LETTER_COLOR,
                     bd=0)
 
+        # Ejemplos de código HOOP
+        ejemplos_menu = Menu(menu, tearoff=0, bg=BACKGROUND_COLOR, fg=LETTER_COLOR,
+                             activebackground='#3E4451', activeforeground=LETTER_COLOR,
+                             bd=0)
+        ejemplos_menu.add_command(label="Ejemplo Básico", 
+                                  command=lambda: self.insert_snippet("ejemplo_basico"))
+        ejemplos_menu.add_command(label="Ejemplo de Clase", 
+                                  command=lambda: self.insert_snippet("ejemplo_clase"))
+        ejemplos_menu.add_command(label="Control de Flujo", 
+                                  command=lambda: self.insert_snippet("ejemplo_control"))
+        ejemplos_menu.add_command(label="Ejemplo de Función", 
+                                  command=lambda: self.insert_snippet("ejemplo_funcion"))
+        ejemplos_menu.add_command(label="Ejemplo Completo", 
+                                  command=lambda: self.insert_snippet("ejemplo_completo"))
+        menu.add_cascade(label="Ejemplos HOOP", menu=ejemplos_menu)
+
+        menu.add_separator()
+
         # Palabras Reservadas
         menu.add_command(label="Palabras Reservadas", 
                          command=lambda: self.insert_snippet("palabras_reservadas"))

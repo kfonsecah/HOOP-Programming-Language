@@ -66,6 +66,8 @@ class Main (tk.Tk) :
 
         # Área de contenido (inicialmente oculta)
         self.content_area = ContentArea(self.top_frame)
+        # Conectar el terminal con el área de contenido
+        self.content_area.set_terminal(self.terminal)
         # No se empaqueta aquí, se gestionará su visibilidad
 
         # Pasar la referencia del content_area y el toggle_terminal al header
