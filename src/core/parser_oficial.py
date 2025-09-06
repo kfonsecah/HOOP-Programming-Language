@@ -75,7 +75,7 @@ class ParserOficial:
             self.advance()
     
     # ==========================================
-    # IMPLEMENTACIÓN DE GRAMÁTICA BNF OFICIAL
+    # IMPLEMENTACIoN DE GRAMaTICA BNF OFICIAL
     # ==========================================
     
     def parse(self):
@@ -431,3 +431,14 @@ def parse_hoop_oficial(tokens):
     """Función principal para parsing de código HOOP"""
     parser = ParserOficial(tokens)
     return parser.parse()
+
+def parse_tokens(tokens):
+    """Función de compatibilidad con la interfaz GUI existente"""
+    try:
+        parser = ParserOficial(tokens)
+        ast = parser.parse()
+        return ast, []  # Sin errores
+    except ParseError as e:
+        return None, [str(e)]  # AST nulo, lista de errores
+    except Exception as e:
+        return None, [f"Error inesperado: {str(e)}"]

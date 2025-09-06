@@ -11,7 +11,7 @@ import sys
 # Importar los módulos del core de HOOP
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'core'))
 from core.lexer import AnalizadorLexico
-from core.parser import parse_tokens
+from core.parser_oficial import parse_tokens
 
 class ContentArea(tk.Frame):
     def __init__(self, master, **kwargs):
@@ -268,7 +268,8 @@ class ContentArea(tk.Frame):
             ast, errores_sintacticos = parse_tokens(tokens)
 
             if self.terminal:
-                self.terminal.add_output(f"✓ AST generado con {len(ast)} nodos principales")
+                ast_size = len(ast.declaraciones) if hasattr(ast, 'declaraciones') else len(ast) if ast else 0
+                self.terminal.add_output(f"✓ AST generado con {ast_size} nodos principales")
 
             # Verificar errores sintácticos
             if errores_sintacticos:
@@ -312,32 +313,60 @@ class ContentArea(tk.Frame):
             self.terminal.add_output("AST vacío")
             return
 
-        # Contar tipos de nodos
-        node_types = {}
-        for node in ast:
-            if isinstance(node, dict) and 'tipo' in node:
-                node_type = node['tipo']
+        # Verificar si es el nuevo formato (ProgramaNode)
+        if hasattr(ast, 'declaraciones'):
+            declaraciones = ast.declaraciones
+            self.terminal.add_output(f"Programa con {len(declaraciones)} declaraciones:")
+            
+            # Contar tipos de nodos
+            node_types = {}
+            for node in declaraciones:
+                node_type = type(node).__name__
                 node_types[node_type] = node_types.get(node_type, 0) + 1
 
-        # Mostrar resumen
-        self.terminal.add_output("Elementos encontrados:")
-        for node_type, count in node_types.items():
-            self.terminal.add_output(f"  - {node_type}: {count}")
+            # Mostrar resumen
+            self.terminal.add_output("Elementos encontrados:")
+            for node_type, count in node_types.items():
+                self.terminal.add_output(f"  - {node_type}: {count}")
 
-        # Mostrar detalles de algunos nodos
-        self.terminal.add_output("\nDetalles:")
-        for i, node in enumerate(ast[:5]):  # Mostrar máximo 5 nodos
-            if isinstance(node, dict):
-                self.terminal.add_output(f"  {i+1}. {node.get('tipo', 'desconocido')}")
-                if 'identificador' in node:
-                    self.terminal.add_output(f"     Identificador: {node['identificador']}")
-                if 'nombre' in node:
-                    self.terminal.add_output(f"     Nombre: {node['nombre']}")
+            # Mostrar detalles de algunos nodos
+            self.terminal.add_output("\nDetalles:")
+            for i, node in enumerate(declaraciones[:5]):  # Mostrar máximo 5 nodos
+                self.terminal.add_output(f"  {i+1}. {type(node).__name__}")
+                if hasattr(node, 'nombre'):
+                    self.terminal.add_output(f"     Nombre: {node.nombre}")
+                elif hasattr(node, 'identificador'):
+                    self.terminal.add_output(f"     Identificador: {node.identificador}")
+        else:
+            # Formato anterior (compatibilidad)
+            # Contar tipos de nodos
+            node_types = {}
+            for node in ast:
+                if isinstance(node, dict) and 'tipo' in node:
+                    node_type = node['tipo']
+                    node_types[node_type] = node_types.get(node_type, 0) + 1
+
+            # Mostrar resumen
+            self.terminal.add_output("Elementos encontrados:")
+            for node_type, count in node_types.items():
+                self.terminal.add_output(f"  - {node_type}: {count}")
+
+            # Mostrar detalles de algunos nodos
+            self.terminal.add_output("\nDetalles:")
+            for i, node in enumerate(ast[:5]):  # Mostrar máximo 5 nodos
+                if isinstance(node, dict):
+                    self.terminal.add_output(f"  {i+1}. {node.get('tipo', 'desconocido')}")
+                    if 'identificador' in node:
+                        self.terminal.add_output(f"     Identificador: {node['identificador']}")
+                    if 'nombre' in node:
+                        self.terminal.add_output(f"     Nombre: {node['nombre']}")
                 if 'valor' in node:
                     self.terminal.add_output(f"     Valor: {node['valor']}")
 
-        if len(ast) > 5:
-            self.terminal.add_output(f"  ... y {len(ast) - 5} elementos más")
+        # Calcular tamaño para mostrar elementos restantes
+        ast_size = len(ast.declaraciones) if hasattr(ast, 'declaraciones') else len(ast) if ast else 0
+        if ast_size > 5:
+            self.terminal.add_output(f"  ... y {ast_size - 5} elementos más")
 
     def show_message(self, message, msg_type="info"):
         """Muestra un mensaje en una ventana emergente"""

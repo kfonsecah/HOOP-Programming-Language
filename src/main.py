@@ -18,8 +18,8 @@ from typing import Optional
 # Agregar el directorio core al path para importar los módulos
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
-from core.lexer import HoopLexer, tokenize_hoop_code
-from core.parser import HoopParser, parse_hoop_code, ParseError
+from core.lexer import AnalizadorLexico, analizar_codigo_hoop
+from core.parser_oficial import parse_tokens, parse_hoop_oficial
 from core.semantic import HoopSemanticAnalyzer, analyze_hoop_semantics
 from core.interpreter import HoopInterpreter, execute_hoop_code, HoopRuntimeError
 

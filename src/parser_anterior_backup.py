@@ -1,7 +1,7 @@
 # Parser estilo YACC para HOOP
 # Usa el lexer existente (tokens: Token.tipo es TokenType, Token.valor es string)
 from typing import List, Any, Optional
-from .lexer import TokenType, RESERVADAS, TIPOS, OPERADORES_PALABRAS, PALABRAS_PREGONADAS
+from .core.lexer import TokenType, RESERVADAS, TIPOS, OPERADORES_PALABRAS, PALABRAS_PREGONADAS
 
 
 class ParseError:
