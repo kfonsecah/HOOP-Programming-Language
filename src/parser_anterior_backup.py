@@ -100,7 +100,7 @@ class Parser:
 
             # Declaración global: data ...
             if tok.tipo == TokenType.KEYWORD and tok.valor == 'data':
-                node = self.declaracion()
+                node = self.parse_data_declaration_unified()
                 if node:
                     nodes.append(node)
                 continue
@@ -342,6 +342,10 @@ class Parser:
         tok = self.current()
         if tok is None:
             return None
+
+        # Data declaration: 'data' IDENTIFIER 'set' expression ';' - VALIDACIÓN UNIFICADA
+        if tok.tipo == TokenType.KEYWORD and tok.valor == 'data':
+            return self.parse_data_declaration_unified()
 
         # If statement: 'when' ... '{' statements '}' ['otherwise' '{' statements '}']
         if tok.tipo == TokenType.KEYWORD and tok.valor == 'when':
@@ -649,6 +653,94 @@ class Parser:
             return {'tipo': 'expr_stmt_global', 'tokens': [t.valor for t in expr_tokens]}
         return None
 
+    def parse_data_declaration_unified(self):
+        """Función unificada para declaraciones 'data' con validación consistente en todos los contextos"""
+        inicio = self.current()
+        self.match(TokenType.KEYWORD, 'data')
+        
+        # Validar que hay un identificador después de 'data' (puede ser simple o con dot notation)
+        id_tokens = []
+        
+        # Primer token debe ser un identificador
+        id_tok = self.current()
+        if not id_tok or id_tok.tipo != TokenType.IDENTIFIER:
+            if id_tok and id_tok.tipo == TokenType.KEYWORD and id_tok.valor == 'self':
+                # Permitir 'self' como inicio de dot notation
+                id_tokens.append(id_tok)
+                self.advance()
+            else:
+                if id_tok:
+                    self.add_error(f"Se esperaba IDENTIFIER después de 'data' pero se encontró {id_tok.tipo.name}('{id_tok.valor}')", id_tok)
+                else:
+                    self.add_error("Se esperaba IDENTIFIER después de 'data' pero se encontró fin de archivo")
+                self.recover_to_semicolon()
+                return None
+        else:
+            id_tokens.append(id_tok)
+            self.advance()
+        
+        # Manejar dot notation (ej: self.numero, objeto.propiedad)
+        while self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '.':
+            id_tokens.append(self.current())  # agregar el '.'
+            self.advance()
+            
+            # Debe seguir otro identificador
+            next_tok = self.current()
+            if next_tok and next_tok.tipo == TokenType.IDENTIFIER:
+                id_tokens.append(next_tok)
+                self.advance()
+            else:
+                self.add_error("Se esperaba IDENTIFIER después de '.' en declaración", next_tok)
+                self.recover_to_semicolon()
+                return None
+        
+        # Construir el identificador completo
+        identifier = ''.join(token.valor for token in id_tokens)
+        
+        # Validar 'set'
+        set_tok = self.current()
+        if not set_tok or not (set_tok.tipo == TokenType.WORD_OPERATOR and set_tok.valor == 'set'):
+            if set_tok:
+                self.add_error(f"Se esperaba 'set' después del identificador '{identifier}' pero se encontró {set_tok.tipo.name}('{set_tok.valor}')", set_tok)
+            else:
+                self.add_error(f"Se esperaba 'set' después del identificador '{identifier}' pero se encontró fin de archivo")
+            self.recover_to_semicolon()
+            return None
+        
+        self.advance()
+        
+        # Parsear expresión
+        expr_value = self.parse_expression()
+        if expr_value is None:
+            self.add_error("Se esperaba una expresión después de 'set'", self.current())
+            self.recover_to_semicolon()
+            return None
+        
+        # Validar punto y coma
+        if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
+            self.match(TokenType.DELIMITER, ';')
+        else:
+            self.add_error("Falta ';' al final de la declaración", self.current())
+            self.recover_to_semicolon()
+        
+        return {
+            'tipo': 'declaracion',
+            'identificador': identifier,
+            'valor': expr_value,
+            'contexto': 'unified'
+        }
+
+    def recover_to_semicolon(self):
+        """Función de recuperación mejorada para declaraciones"""
+        while self.current() and self.current().tipo != TokenType.EOF:
+            if self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
+                self.advance()  # Consumir el ';'
+                break
+            # Parar en delimitadores de bloque para evitar consumir demasiado
+            if self.current().tipo == TokenType.DELIMITER and self.current().valor in ('{', '}'):
+                break
+            self.advance()
+
     def levenshtein(self, a: str, b: str) -> int:
         # distancia de Levenshtein iterativa (memoria O(min(len(a), len(b))))
         if a == b:
@@ -678,11 +770,17 @@ class Parser:
             
         # Lista expandida de palabras comunes que NO deben ser sugeridas como keywords
         common_patterns = {
+            # Variables de prueba y desarrollo
+            "test", "temp", "aux", "tmp", "demo", "example", "sample", "mock", "stub", "dummy",
+            # Variables descriptivas comunes
             "mensaje", "resultado", "nombre", "valor", "datos", "info", "item", "objeto",
             "nota1", "nota2", "nota3", "nota4", "nota5",  # Variables numéricas
             "suma", "resta", "multiplicacion", "division", "promedio",  # Variables matemáticas
             "estudiante", "persona", "cuenta", "usuario", "cliente",  # Entidades
-            "nivel", "cantidad", "saldo", "titular", "numero", "activa"  # Atributos comunes
+            "nivel", "cantidad", "saldo", "titular", "numero", "activa",  # Atributos comunes
+            # Variables de programación comunes
+            "index", "count", "size", "length", "total", "max", "min", "avg", "first", "last",
+            "start", "end", "begin", "finish", "input", "output", "buffer", "cache", "config"
         }
         
         # No sugerir si es una palabra común
@@ -695,7 +793,7 @@ class Parser:
         # Patrón: palabra + número (ej: nota1, variable2, etc.)
         if len(word) > 2 and word_lower[-1].isdigit():
             base_word = word_lower[:-1]
-            if any(base_word.startswith(pattern) for pattern in ["nota", "var", "dato", "item", "elem"]):
+            if any(base_word.startswith(pattern) for pattern in ["nota", "var", "dato", "item", "elem", "test", "temp"]):
                 return None
         
         # Patrón: palabras compuestas (ej: calcularPromedio, evaluarEstudiante)
@@ -705,6 +803,12 @@ class Parser:
         # No sugerir para palabras muy largas (probablemente nombres descriptivos)
         if len(word) > 12:
             return None
+        
+        # Patrón: variables con sufijos comunes (testValue, tempData, etc.)
+        common_suffixes = ["value", "data", "info", "item", "obj", "var", "num", "str", "bool"]
+        for suffix in common_suffixes:
+            if word_lower.endswith(suffix.lower()):
+                return None
 
         # Normalizar colapsando repeticiones
         def normalize(s: str) -> str:
@@ -735,11 +839,24 @@ class Parser:
         for candidate in candidates:
             norm_candidate = normalize(candidate.lower())
             distance = self.levenshtein(norm_word, norm_candidate)
-            # Umbral ajustado
-            threshold = max(2, min(len(norm_word), len(norm_candidate)) // 2)
+            
+            # Umbral más estricto para reducir falsos positivos
+            if len(norm_word) <= 4:
+                threshold = 1  # Para palabras cortas, solo 1 error permitido
+            elif len(norm_word) <= 6:
+                threshold = 2  # Para palabras medianas, máximo 2 errores
+            else:
+                threshold = min(3, len(norm_word) // 3)  # Para palabras largas, más flexible
+            
+            # Filtro adicional: si la distancia es muy pequeña pero las palabras son muy diferentes, descartar
             if distance <= threshold and distance < best_distance:
-                best_distance = distance
-                best_candidate = candidate
+                # Verificar que al menos la mitad de los caracteres coincidan en posición
+                matching_chars = sum(1 for i, (a, b) in enumerate(zip(norm_word, norm_candidate)) if a == b)
+                min_length = min(len(norm_word), len(norm_candidate))
+                
+                if matching_chars >= min_length * 0.4:  # Al menos 40% de coincidencia posicional
+                    best_distance = distance
+                    best_candidate = candidate
         
         return best_candidate
 

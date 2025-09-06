@@ -394,15 +394,19 @@ class AnalizadorLexico:
         return Token(TokenType.COMMENT, valor, linea_inicio, columna_inicio, self.posicion)
     
     def leer_operador(self):
-        """Lee operadores de uno o dos caracteres"""
+        """Lee operadores de uno o dos caracteres, o comentarios //"""
         linea_inicio = self.linea_actual
         columna_inicio = self.columna_actual
         
         char1 = self.obtener_caracter_actual()
         char2 = self.obtener_siguiente_caracter()
         
-        # Verificar operadores de dos caracteres primero
-        if char2 and char1 + char2 in OPERADORES:
+        # Verificar comentario // primero
+        if char1 == '/' and char2 == '/':
+            return self.leer_comentario_doble_slash()
+        
+        # Verificar operadores de dos caracteres
+        elif char2 and char1 + char2 in OPERADORES:
             valor = char1 + char2
             self.avanzar()
             self.avanzar()
@@ -417,6 +421,23 @@ class AnalizadorLexico:
             return Token(TokenType.ERROR, valor, linea_inicio, columna_inicio, self.posicion)
         
         return Token(TokenType.OPERATOR, valor, linea_inicio, columna_inicio, self.posicion)
+    
+    def leer_comentario_doble_slash(self):
+        """Lee comentarios de línea (//)"""
+        linea_inicio = self.linea_actual
+        columna_inicio = self.columna_actual
+        comentario = ""
+        
+        # Saltar los //
+        self.avanzar()  # primer /
+        self.avanzar()  # segundo /
+        
+        # Leer hasta el final de la línea
+        while self.posicion < len(self.codigo) and self.obtener_caracter_actual() != '\n':
+            comentario += self.obtener_caracter_actual()
+            self.avanzar()
+        
+        return Token(TokenType.COMMENT, comentario.strip(), linea_inicio, columna_inicio, self.posicion)
     
     def analizar(self):
         """
