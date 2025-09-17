@@ -1,7 +1,6 @@
 import sys
 import pathlib
 
-# Asegurar que src esté en sys.path para importar core.*
 ROOT = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(ROOT / 'src'))
 

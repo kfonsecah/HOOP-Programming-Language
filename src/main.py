@@ -2,12 +2,10 @@
 Archivo principal para pruebas del lenguaje HOOP
 ===============================================
 
-Este archivo permite probar el compilador/intérprete completo de HOOP,
-pasando código por todas las fases: lexer → parser → semantic → interpreter
+Este archivo permite probar el compilador/interprete completo de HOOP,
+pasando codigo por todas las fases: lexer → parser → semantic → interpreter
 
-Uso:
-    python main.py [archivo.hoop]
-    python main.py  # Modo interactivo
+
 """
 
 import sys
@@ -15,16 +13,16 @@ import os
 from pathlib import Path
 from typing import Optional
 
-# Agregar el directorio core al path para importar los módulos
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from core.lexer import AnalizadorLexico, analizar_codigo_hoop
 from core.parser_oficial import parse_tokens, parse_hoop_oficial
-from core.semantic import HoopSemanticAnalyzer, analyze_hoop_semantics
-from core.interpreter import HoopInterpreter, execute_hoop_code, HoopRuntimeError
+#from core.semantic import HoopSemanticAnalyzer, analyze_hoop_semantics
+#from core.interpreter import HoopInterpreter, execute_hoop_code, HoopRuntimeError
 
 def print_banner():
-    """Imprime el banner del intérprete HOOP"""
+    """Imprime el banner del interprete HOOP"""
     print("=" * 60)
     print("  HOOP - Human Object Oriented Programming")
     print("  Intérprete de pruebas v0.1")
@@ -44,8 +42,7 @@ def run_file(file_path: str):
         
         print(f"Ejecutando archivo: {file_path}")
         print("-" * 40)
-        
-        # Ejecutar código completo
+     
         output = execute_hoop_code(code)
         print(output)
         
@@ -61,18 +58,18 @@ def analyze_code_step_by_step(code: str):
     Args:
         code: Código fuente HOOP
     """
-    print("📝 Analizando código paso a paso...")
+    print("Analizando código paso a paso...")
     print("=" * 50)
     
     try:
         # FASE 1: Análisis Léxico
-        print("🔤 FASE 1: Análisis Léxico")
+        print("FASE 1: Análisis Léxico")
         print("-" * 30)
         
         lexer = HoopLexer()
         tokens = lexer.tokenize(code)
         
-        print(f"✓ Tokens generados: {len(tokens)}")
+        print(f"Tokens generados: {len(tokens)}")
         
         # Mostrar algunos tokens (máximo 10)
         print("Primeros tokens:")
@@ -80,12 +77,12 @@ def analyze_code_step_by_step(code: str):
             print(f"  {i+1:2d}. {token.type.value:15} '{token.value}' (línea {token.line})")
         
         if len(tokens) > 10:
-            print(f"  ... y {len(tokens) - 10} tokens más")
+            print(f"  ... y {len(tokens) - 10} tokens mas")
         
         print()
         
         # FASE 2: Análisis Sintáctico
-        print("🌳 FASE 2: Análisis Sintáctico")
+        print("FASE 2: Analisis Sintactico")
         print("-" * 30)
         
         parser = HoopParser()
@@ -106,7 +103,7 @@ def analyze_code_step_by_step(code: str):
         print()
         
         # FASE 3: Análisis Semántico
-        print("🔍 FASE 3: Análisis Semántico")
+        print("FASE 3: Análisis Semántico")
         print("-" * 30)
         
         is_valid, errors, warnings = analyze_hoop_semantics(ast)
@@ -125,9 +122,9 @@ def analyze_code_step_by_step(code: str):
         
         print()
         
-        # FASE 4: Ejecución (solo si no hay errores)
+        # FASE 4: Ejecucion (solo si no hay errores)
         if is_valid:
-            print("🚀 FASE 4: Ejecución")
+            print(" FASE 4: Ejecución")
             print("-" * 30)
             
             interpreter = HoopInterpreter()
@@ -145,7 +142,7 @@ def analyze_code_step_by_step(code: str):
 
 def interactive_mode():
     """Modo interactivo para probar código HOOP"""
-    print("🔄 Modo Interactivo HOOP")
+    print("Modo Interactivo HOOP")
     print("Escribe código HOOP línea por línea.")
     print("Comandos especiales:")
     print("  :run    - Ejecutar código acumulado")

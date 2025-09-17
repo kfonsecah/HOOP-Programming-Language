@@ -7,7 +7,7 @@ from enum import Enum
 
 # Palabras reservadas del lenguaje HOOP
 RESERVADAS = {
-    # === ESTRUCTURAS BÁSICAS (POO BÁSICO) ===
+    # === (POO BÁSICO) ===
     "mold",     # class
     # "bond",     # interface - NO USADO EN POO BÁSICO
     # "listing",  # enum - FUTURO
@@ -28,7 +28,7 @@ RESERVADAS = {
     "from",     # desde (en ciclos)
     "to",       # hasta (en ciclos)
     
-    # === CREACIÓN DE OBJETOS ===
+    # === CREACION DE OBJETOS ===
     "forge",    # new (crear objeto)
     "self",     # this
     "void",     # null
@@ -50,11 +50,11 @@ RESERVADAS = {
     "data",     # var (tipado genérico/inferido)
     "action",   # fun
     "display",  # print, printf
-    # REMOVIDO: "construct" ya no es una palabra reservada válida en HOOP
+    
 }
 
 #########################################
-# --- POO BÁSICO HOOP - LIMITACIONES --- #
+# --- POO BASICO HOOP - LIMITACIONES --- #
 #########################################
 
 """

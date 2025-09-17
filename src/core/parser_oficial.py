@@ -1,7 +1,6 @@
-#!/usr/bin/env python3
+
 """
 Parser Oficial HOOP - Implementación basada en gramática BNF oficial
-Sigue estrictamente las especificaciones del documento HOOP.pdf
 """
 
 from core.lexer import TokenType
@@ -75,7 +74,7 @@ class ParserOficial:
             self.advance()
     
     # ==========================================
-    # IMPLEMENTACIoN DE GRAMaTICA BNF OFICIAL
+    # IMPLEMENTACION DE GRAMaTICA BNF OFICIAL
     # ==========================================
     
     def parse(self):
@@ -132,14 +131,14 @@ class ParserOficial:
         """<parametros> ::= <TIPO> <IDENTIFIER> ("," <TIPO> <IDENTIFIER>)*"""
         parametros = []
         
-        # Primer parámetro
+        # Primer parametro
         tipo = self.expect(TokenType.TYPE).valor
         nombre = self.expect(TokenType.IDENTIFIER).valor
         parametros.append(ParametroNode(tipo, nombre))
         
-        # Parámetros adicionales
+        # Parametros adicionales
         while self.match(TokenType.DELIMITER, ","):
-            self.advance()  # consumir ','
+            self.advance()
             tipo = self.expect(TokenType.TYPE).valor
             nombre = self.expect(TokenType.IDENTIFIER).valor
             parametros.append(ParametroNode(tipo, nombre))
@@ -257,16 +256,16 @@ class ParserOficial:
     
     def parse_simple_statement(self):
         """<simple_statement> ::= <asignacion> | <expresion> ";" """
-        # Verificar si es una asignación (identificador set expresion)
+        # Verificar si es una asignacion (identificador set expresion)
         if (self.match(TokenType.IDENTIFIER) or 
             (self.match(TokenType.KEYWORD) and self.current_token.valor == "self")):
             
-            # Guardar la posición para hacer backtrack si es necesario
+            
             checkpoint = self.current
             
-            # Intentar parsear como asignación
+            # Intentar parsear como asignacion
             try:
-                # Parsear el lado izquierdo (puede ser id o self.atributo)
+             
                 if self.current_token.valor == "self":
                     self.advance()  # consumir 'self'
                     self.expect(TokenType.DELIMITER, ".")
@@ -284,16 +283,16 @@ class ParserOficial:
                     self.expect(TokenType.DELIMITER, ";")
                     return AssignmentNode(izquierda, valor)
                 else:
-                    # No es asignación, hacer backtrack y parsear como expresión
+                    # No es asignacion, hacer backtrack y parsear como expresion
                     self.current = checkpoint
                     self.current_token = self.tokens[self.current] if self.current < len(self.tokens) else None
                     
             except:
-                # Error en parsing de asignación, hacer backtrack
+                # Error en parsing, hacer backtrack
                 self.current = checkpoint
                 self.current_token = self.tokens[self.current] if self.current < len(self.tokens) else None
         
-        # Parsear como expresión normal
+       
         expresion = self.parse_expresion()
         self.expect(TokenType.DELIMITER, ";")
         return expresion
@@ -395,21 +394,21 @@ class ParserOficial:
             nombre = self.current_token.valor
             self.advance()
             
-            # Manejar acceso a atributos (ej: self.valor, objeto.atributo)
+            # Manejar acceso a atributos
             if self.match(TokenType.DELIMITER, "."):
-                self.advance()  # consumir '.'
+                self.advance() 
                 atributo = self.expect(TokenType.IDENTIFIER).valor
                 return AttributeAccessNode(IdentificadorNode(nombre), atributo)
             
-            # Verificar si es una llamada a función
+            # Verificar si es una llamada a funcion
             elif self.match(TokenType.DELIMITER, "("):
-                self.advance()  # consumir '('
+                self.advance() 
                 argumentos = []
                 
                 if not self.match(TokenType.DELIMITER, ")"):
                     argumentos.append(self.parse_expresion())
                     while self.match(TokenType.DELIMITER, ","):
-                        self.advance()  # consumir ','
+                        self.advance()  
                         argumentos.append(self.parse_expresion())
                 
                 self.expect(TokenType.DELIMITER, ")")
@@ -419,7 +418,7 @@ class ParserOficial:
                 return IdentificadorNode(nombre)
         
         elif self.match(TokenType.DELIMITER, "("):
-            self.advance()  # consumir '('
+            self.advance()  
             expresion = self.parse_expresion()
             self.expect(TokenType.DELIMITER, ")")
             return expresion

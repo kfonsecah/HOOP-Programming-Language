@@ -1,5 +1,5 @@
 # Parser estilo YACC para HOOP
-# Usa el lexer existente (tokens: Token.tipo es TokenType, Token.valor es string)
+
 from typing import List, Any, Optional
 from .core.lexer import TokenType, RESERVADAS, TIPOS, OPERADORES_PALABRAS, PALABRAS_PREGONADAS
 
@@ -187,7 +187,7 @@ class Parser:
         expr_tokens = []
         paren_depth = 0
         
-        # Leer tokens hasta encontrar ';' o llegar al final, teniendo en cuenta paréntesis
+       
         while self.current() and self.current().tipo != TokenType.EOF:
             tok = self.current()
             
@@ -250,8 +250,7 @@ class Parser:
                     metodos.append(m)
                 continue
             
-            # ELIMINAR: Ya no reconocemos 'construct' como válido
-            # Si alguien usa 'construct', será tratado como error
+
             if tok.tipo == TokenType.KEYWORD and tok.valor == 'construct':
                 self.add_error("'construct' no es una palabra válida en HOOP. Use 'action' para definir métodos.", tok)
                 # Saltar hasta el siguiente ';' o '}'
@@ -292,7 +291,7 @@ class Parser:
             self.match(TokenType.DELIMITER, ';')
         else:
             self.add_error("Falta ';' al final de la declaración de atributo", self.current())
-            # intentar sincronizar
+           
             while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == ';') and self.current().tipo != TokenType.EOF:
                 self.advance()
             if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == ';':
@@ -304,14 +303,14 @@ class Parser:
             'nombre': getattr(id_tok, 'valor', None) if id_tok else None
         }
 
-    # ---parseo de sentencias y if (hasta profundidad 2) ---
+   
     def parse_statements(self, max_depth=2, current_depth=1):
         stmts = []
         while self.current() and not (self.current().tipo == TokenType.DELIMITER and self.current().valor == '}') and self.current().tipo != TokenType.EOF:
-            # Manejar bloque inesperado que empieza con '{' para evitar bucle infinito
+        
             if self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
                 self.add_error("Bloque inesperado '{' — se descartará hasta el correspondiente '}'", self.current())
-                # consumir bloque completo con contador de llaves
+           
                 depth = 0
                 while self.current() and not (self.current().tipo == TokenType.EOF):
                     if self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
@@ -343,22 +342,22 @@ class Parser:
         if tok is None:
             return None
 
-        # Data declaration: 'data' IDENTIFIER 'set' expression ';' - VALIDACIÓN UNIFICADA
+        
         if tok.tipo == TokenType.KEYWORD and tok.valor == 'data':
             return self.parse_data_declaration_unified()
 
-        # If statement: 'when' ... '{' statements '}' ['otherwise' '{' statements '}']
+        
         if tok.tipo == TokenType.KEYWORD and tok.valor == 'when':
             return self.parse_if_statement(max_depth, current_depth)
 
-        # Cycle statement: 'cycle' IDENTIFIER 'from' expr 'to' expr '{' statements '}'
+       
         if tok.tipo == TokenType.KEYWORD and tok.valor == 'cycle':
             return self.parse_cycle_statement(max_depth, current_depth)
 
-        # Si encontramos un '{' aquí, consumir el bloque y reportar error para evitar estancamiento
+       
         if tok.tipo == TokenType.DELIMITER and tok.valor == '{':
             self.add_error("Encontrado '{' inesperado en la posición de una sentencia; se descartará el bloque.", tok)
-            # consumir bloque completo
+            
             depth = 0
             while self.current() and not (self.current().tipo == TokenType.EOF):
                 if self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
@@ -542,7 +541,7 @@ class Parser:
             else:
                 self.add_error("Se esperaba expresión final después de 'to'", self.current())
 
-        # ahora esperar bloque '{' statements '}'
+       
         body = []
         if self.current() and self.current().tipo == TokenType.DELIMITER and self.current().valor == '{':
             self.match(TokenType.DELIMITER, '{')
@@ -658,10 +657,10 @@ class Parser:
         inicio = self.current()
         self.match(TokenType.KEYWORD, 'data')
         
-        # Validar que hay un identificador después de 'data' (puede ser simple o con dot notation)
+       
         id_tokens = []
         
-        # Primer token debe ser un identificador
+        
         id_tok = self.current()
         if not id_tok or id_tok.tipo != TokenType.IDENTIFIER:
             if id_tok and id_tok.tipo == TokenType.KEYWORD and id_tok.valor == 'self':
@@ -796,21 +795,21 @@ class Parser:
             if any(base_word.startswith(pattern) for pattern in ["nota", "var", "dato", "item", "elem", "test", "temp"]):
                 return None
         
-        # Patrón: palabras compuestas (ej: calcularPromedio, evaluarEstudiante)
+       
         if len(word) > 8 and any(char.isupper() for char in word[1:]):
             return None
             
-        # No sugerir para palabras muy largas (probablemente nombres descriptivos)
+        
         if len(word) > 12:
             return None
         
-        # Patrón: variables con sufijos comunes (testValue, tempData, etc.)
+       
         common_suffixes = ["value", "data", "info", "item", "obj", "var", "num", "str", "bool"]
         for suffix in common_suffixes:
             if word_lower.endswith(suffix.lower()):
                 return None
 
-        # Normalizar colapsando repeticiones
+       
         def normalize(s: str) -> str:
             if not s:
                 return s
@@ -830,7 +829,7 @@ class Parser:
         candidates.update(TIPOS)
         candidates.update(OPERADORES_PALABRAS)
         
-        # ELIMINAR 'construct' de las candidatas para sugerencias
+    
         candidates.discard('construct')
 
         best_candidate = None
@@ -840,27 +839,27 @@ class Parser:
             norm_candidate = normalize(candidate.lower())
             distance = self.levenshtein(norm_word, norm_candidate)
             
-            # Umbral más estricto para reducir falsos positivos
+          
             if len(norm_word) <= 4:
-                threshold = 1  # Para palabras cortas, solo 1 error permitido
+                threshold = 1  
             elif len(norm_word) <= 6:
-                threshold = 2  # Para palabras medianas, máximo 2 errores
+                threshold = 2  
             else:
-                threshold = min(3, len(norm_word) // 3)  # Para palabras largas, más flexible
+                threshold = min(3, len(norm_word) // 3)  
             
-            # Filtro adicional: si la distancia es muy pequeña pero las palabras son muy diferentes, descartar
+     
             if distance <= threshold and distance < best_distance:
-                # Verificar que al menos la mitad de los caracteres coincidan en posición
+     
                 matching_chars = sum(1 for i, (a, b) in enumerate(zip(norm_word, norm_candidate)) if a == b)
                 min_length = min(len(norm_word), len(norm_candidate))
                 
-                if matching_chars >= min_length * 0.4:  # Al menos 40% de coincidencia posicional
+                if matching_chars >= min_length * 0.4: 
                     best_distance = distance
                     best_candidate = candidate
         
         return best_candidate
 
-    # Accesores de errores
+
     def tiene_errores(self):
         return len(self.errors) > 0
 
@@ -868,7 +867,7 @@ class Parser:
         return self.errors
 
 
-# Helper simple para uso rápido
+
 def parse_tokens(tokens: List[Any]):
     p = Parser(tokens)
     ast = p.parse()
