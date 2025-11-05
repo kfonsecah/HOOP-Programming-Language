@@ -5,3 +5,10 @@ Pillow==10.4.0
 cairosvg==2.7.1
 
 # Tkinter viene incluido con Python, no necesita instalación
+
+
+Léxico: 100% ✅
+Sintáctico: 100% ✅
+Semántico: 100% ✅
+Intérprete: 75% ✅ (funcional para mayoría de casos)
+GUI: Pendiente de integración
