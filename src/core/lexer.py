@@ -283,10 +283,19 @@ class AnalizadorLexico:
                     self.posicion)
     
     def leer_numero(self):
-        """Lee números (enteros y decimales)"""
+        """Lee números (enteros y decimales)
+        
+        Formatos soportados:
+        - Enteros: 42, 0, 123
+        - Decimales: 3.14, 0.5, 123.456
+        
+        Returns:
+            Token de tipo NUMBER con el valor numérico como string
+        """
         linea_inicio = self.linea_actual
         columna_inicio = self.columna_actual
         valor = ""
+        tiene_punto = False
         
         # Leer parte entera
         while (self.obtener_caracter_actual() and 
@@ -299,6 +308,7 @@ class AnalizadorLexico:
             self.obtener_siguiente_caracter() and 
             self.obtener_siguiente_caracter().isdigit()):
             
+            tiene_punto = True
             valor += self.obtener_caracter_actual()  # el punto
             self.avanzar()
             
@@ -307,11 +317,24 @@ class AnalizadorLexico:
                    self.obtener_caracter_actual().isdigit()):
                 valor += self.obtener_caracter_actual()
                 self.avanzar()
+            
+            # Verificar múltiples puntos decimales (error común)
+            if self.obtener_caracter_actual() == '.':
+                self.errores.append(f"Número mal formado con múltiples puntos decimales en línea {linea_inicio}:{columna_inicio}")
+                # Consumir el punto extra
+                self.avanzar()
         
         return Token(TokenType.NUMBER, valor, linea_inicio, columna_inicio, self.posicion)
     
     def leer_cadena(self, delimitador):
-        """Lee cadenas de texto"""
+        """Lee cadenas de texto o caracteres individuales
+        
+        Args:
+            delimitador: Comilla que delimita la cadena (' o ")
+        
+        Returns:
+            Token de tipo STRING o CHARACTER según corresponda
+        """
         linea_inicio = self.linea_actual
         columna_inicio = self.columna_actual
         self.avanzar()  # saltar comilla inicial
@@ -347,11 +370,20 @@ class AnalizadorLexico:
             self.avanzar()  # saltar comilla final
         else:
             self.errores.append(f"Cadena sin cerrar en línea {linea_inicio}:{columna_inicio}")
+            return Token(TokenType.ERROR, valor, linea_inicio, columna_inicio, self.posicion)
+        
+        # Determinar si es un carácter individual (solo con comillas simples y un carácter)
+        if delimitador == "'" and len(valor) == 1:
+            return Token(TokenType.CHARACTER, valor, linea_inicio, columna_inicio, self.posicion)
         
         return Token(TokenType.STRING, valor, linea_inicio, columna_inicio, self.posicion)
     
     def leer_identificador(self):
-        """Lee identificadores, palabras clave, tipos, palabras pregonadas y operadores en palabras"""
+        """Lee identificadores, palabras clave, tipos, palabras pregonadas y operadores en palabras
+        
+        Returns:
+            Token clasificado según el tipo de palabra reconocida
+        """
         linea_inicio = self.linea_actual
         columna_inicio = self.columna_actual
         valor = ""
@@ -363,35 +395,45 @@ class AnalizadorLexico:
             valor += self.obtener_caracter_actual()
             self.avanzar()
         
-        # Clasificar segun las tablas definidas
-        if valor in RESERVADAS:
-            tipo = TokenType.KEYWORD
-        elif valor in TIPOS:
-            tipo = TokenType.TYPE
+        # Clasificar según las tablas definidas (orden optimizado por frecuencia de uso)
+        # Primero verificar booleanos (más rápido, solo 2 valores)
+        if valor in ['true', 'false']:
+            tipo = TokenType.BOOLEAN
+        # Luego operadores en palabras (muy comunes: set, plus, equals, etc.)
         elif valor in OPERADORES_PALABRAS:
             tipo = TokenType.WORD_OPERATOR
+        # Palabras reservadas (estructuras de control, etc.)
+        elif valor in RESERVADAS:
+            tipo = TokenType.KEYWORD
+        # Tipos de datos
+        elif valor in TIPOS:
+            tipo = TokenType.TYPE
+        # Funciones built-in
         elif valor in PALABRAS_PREGONADAS:
             tipo = TokenType.BUILTIN
-        elif valor in ['true', 'false']:
-            tipo = TokenType.BOOLEAN
+        # Si no coincide con ninguna categoría, es un identificador
         else:
             tipo = TokenType.IDENTIFIER
         
         return Token(tipo, valor, linea_inicio, columna_inicio, self.posicion)
     
-    def leer_comentario(self):
-        """Lee comentarios de línea (#)"""
+    def leer_comentario(self, prefijo=""):
+        """Lee comentarios de línea (# o //)
+        
+        Args:
+            prefijo: Prefijo del comentario ya consumido (ej: '#', '//')
+        """
         linea_inicio = self.linea_actual
         columna_inicio = self.columna_actual
-        valor = ""
+        comentario = ""
         
         # Leer hasta el final de la línea
         while (self.obtener_caracter_actual() and 
                self.obtener_caracter_actual() != '\n'):
-            valor += self.obtener_caracter_actual()
+            comentario += self.obtener_caracter_actual()
             self.avanzar()
         
-        return Token(TokenType.COMMENT, valor, linea_inicio, columna_inicio, self.posicion)
+        return Token(TokenType.COMMENT, comentario.strip(), linea_inicio, columna_inicio, self.posicion)
     
     def leer_operador(self):
         """Lee operadores de uno o dos caracteres, o comentarios //"""
@@ -403,41 +445,30 @@ class AnalizadorLexico:
         
         # Verificar comentario // primero
         if char1 == '/' and char2 == '/':
-            return self.leer_comentario_doble_slash()
+            self.avanzar()  # primer /
+            self.avanzar()  # segundo /
+            return self.leer_comentario("//")
         
         # Verificar operadores de dos caracteres
-        elif char2 and char1 + char2 in OPERADORES:
+        if char2 and char1 + char2 in OPERADORES:
             valor = char1 + char2
             self.avanzar()
             self.avanzar()
-        elif char1 in OPERADORES:
-            valor = char1
-            self.avanzar()
-        else:
-            # Operador desconocido
-            valor = char1
-            self.avanzar()
-            self.errores.append(f"Operador desconocido '{valor}' en línea {linea_inicio}:{columna_inicio}")
-            return Token(TokenType.ERROR, valor, linea_inicio, columna_inicio, self.posicion)
+            return Token(TokenType.OPERATOR, valor, linea_inicio, columna_inicio, self.posicion)
         
-        return Token(TokenType.OPERATOR, valor, linea_inicio, columna_inicio, self.posicion)
+        # Verificar operadores de un carácter
+        if char1 in OPERADORES:
+            valor = char1
+            self.avanzar()
+            return Token(TokenType.OPERATOR, valor, linea_inicio, columna_inicio, self.posicion)
+        
+        # Operador desconocido
+        valor = char1
+        self.avanzar()
+        self.errores.append(f"Operador desconocido '{valor}' en línea {linea_inicio}:{columna_inicio}")
+        return Token(TokenType.ERROR, valor, linea_inicio, columna_inicio, self.posicion)
     
-    def leer_comentario_doble_slash(self):
-        """Lee comentarios de línea (//)"""
-        linea_inicio = self.linea_actual
-        columna_inicio = self.columna_actual
-        comentario = ""
-        
-        # Saltar los //
-        self.avanzar()  # primer /
-        self.avanzar()  # segundo /
-        
-        # Leer hasta el final de la línea
-        while self.posicion < len(self.codigo) and self.obtener_caracter_actual() != '\n':
-            comentario += self.obtener_caracter_actual()
-            self.avanzar()
-        
-        return Token(TokenType.COMMENT, comentario.strip(), linea_inicio, columna_inicio, self.posicion)
+
     
     def analizar(self):
         """
@@ -484,7 +515,8 @@ class AnalizadorLexico:
             
             # Comentarios (#)
             elif char == '#':
-                token = self.leer_comentario()
+                self.avanzar()  # consumir el #
+                token = self.leer_comentario("#")
                 self.tokens.append(token)
             
             # Delimitadores
@@ -500,7 +532,12 @@ class AnalizadorLexico:
             
             # Carácter desconocido
             else:
-                self.errores.append(f"Carácter desconocido '{char}' en línea {self.linea_actual}:{self.columna_actual}")
+                linea_error = self.linea_actual
+                columna_error = self.columna_actual
+                self.errores.append(f"Carácter desconocido '{char}' (código ASCII: {ord(char)}) en línea {linea_error}:{columna_error}")
+                # Crear token de error para mantener sincronización
+                token = self.crear_token(TokenType.ERROR, char)
+                self.tokens.append(token)
                 self.avanzar()
         
         # Agregar token EOF al final

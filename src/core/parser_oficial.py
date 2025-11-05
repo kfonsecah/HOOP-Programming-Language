@@ -1,6 +1,21 @@
 
 """
 Parser Oficial HOOP - Implementación basada en gramática BNF oficial
+
+Este parser implementa un analizador sintáctico descendente recursivo
+que convierte una secuencia de tokens en un Árbol de Sintaxis Abstracta (AST).
+
+Características:
+- Parser LL(1) con lookahead de 1 token
+- Manejo de precedencia de operadores
+- Recuperación de errores con información de línea/columna
+- Soporte completo para POO básico de HOOP
+
+Gramática soportada:
+- Clases (mold), funciones (action), variables (data)
+- Control de flujo: when/otherwise, cycle
+- Expresiones con operadores en palabras (plus, minus, equals, etc.)
+- Llamadas a funciones y acceso a miembros
 """
 
 from core.lexer import TokenType
@@ -12,24 +27,56 @@ from core.ast_nodes import (
 )
 
 class ParseError(Exception):
-    """Excepción para errores de parsing"""
+    """Excepción para errores de parsing con información de contexto
+    
+    Attributes:
+        mensaje: Descripción del error
+        token: Token donde ocurrió el error (contiene línea y columna)
+    """
     def __init__(self, mensaje, token=None):
         self.mensaje = mensaje
         self.token = token
         super().__init__(mensaje)
 
 class ParserOficial:
-    """Parser que sigue la gramática BNF oficial de HOOP"""
+    """Parser que sigue la gramática BNF oficial de HOOP
+    
+    Implementa un parser recursivo descendente con las siguientes características:
+    - Validación de profundidad de anidamiento
+    - Manejo de errores con información precisa de ubicación
+    - Soporte para recuperación de errores (futuro)
+    """
+    
+    # Límite máximo de anidamiento permitido (según especificaciones)
+    MAX_NESTING_DEPTH = 3
     
     def __init__(self, tokens):
+        if not tokens:
+            raise ValueError("La lista de tokens no puede estar vacía")
+        
         self.tokens = tokens
         self.current = 0
         self.current_token = self.tokens[0] if tokens else None
+        self.nesting_depth = 0  # Profundidad actual de anidamiento
+        self.errors = []  # Lista de errores acumulados
     
     def error(self, mensaje):
-        """Lanza un error de parsing con información del token actual"""
-        token_info = f" en línea {self.current_token.linea}" if self.current_token else ""
-        raise ParseError(f"{mensaje}{token_info}", self.current_token)
+        """Lanza un error de parsing con información detallada del token actual
+        
+        Args:
+            mensaje: Descripción del error
+            
+        Raises:
+            ParseError: Con información de línea, columna y token
+        """
+        if self.current_token:
+            token_info = f" en línea {self.current_token.linea}, columna {self.current_token.columna}"
+            token_detail = f" (token: {self.current_token.tipo.value} '{self.current_token.valor}')"
+            error_msg = f"{mensaje}{token_info}{token_detail}"
+        else:
+            error_msg = f"{mensaje} (fin de archivo inesperado)"
+        
+        raise ParseError(error_msg, self.current_token)
     
     def advance(self):
         """Avanza al siguiente token"""
@@ -72,6 +119,18 @@ class ParserOficial:
         while (self.current_token and 
                self.current_token.tipo in [TokenType.NEWLINE, TokenType.WHITESPACE, TokenType.COMMENT]):
             self.advance()
+    
+    def check_nesting_depth(self, estructura):
+        """Verifica que no se exceda el límite de anidamiento
+        
+        Args:
+            estructura: Nombre de la estructura que se está anidando
+            
+        Raises:
+            ParseError: Si se excede MAX_NESTING_DEPTH
+        """
+        if self.nesting_depth >= self.MAX_NESTING_DEPTH:
+            self.error(f"Profundidad máxima de anidamiento excedida ({self.MAX_NESTING_DEPTH} niveles) en {estructura}")
     
     # ==========================================
     # IMPLEMENTACION DE GRAMaTICA BNF OFICIAL
@@ -156,17 +215,37 @@ class ParserOficial:
         return ClaseNode(nombre, cuerpo)
     
     def parse_clase_cuerpo(self):
-        """<clase_cuerpo> ::= (<atributo> | <metodo>)*"""
+        """Parsea el cuerpo de una clase
+        
+        Gramática: <clase_cuerpo> ::= (<atributo> | <metodo>)*
+        
+        Los atributos pueden ser:
+        - Declaraciones con data: data nombre set valor;
+        - Declaraciones con tipo: tipo nombre;
+        
+        Returns:
+            Lista de elementos (declaraciones y métodos)
+        """
         elementos = []
         while self.current_token and not self.match(TokenType.DELIMITER, "}"):
             self.skip_newlines()
             if self.match(TokenType.DELIMITER, "}"):
                 break
-                
+            
+            # Declaración con 'data'
             if self.match(TokenType.KEYWORD, "data"):
                 elementos.append(self.parse_declaracion())
+            # Método con 'action'
             elif self.match(TokenType.KEYWORD, "action"):
                 elementos.append(self.parse_funcion())
+            # Atributo con tipo explícito (whole nombre;, text nombre;, etc.)
+            elif self.match(TokenType.TYPE):
+                tipo = self.current_token.valor
+                self.advance()
+                nombre = self.expect(TokenType.IDENTIFIER).valor
+                self.expect(TokenType.DELIMITER, ";")
+                # Crear una declaración sin valor inicial
+                elementos.append(DeclaracionNode(nombre, LiteralNode("TYPE_DECLARATION", tipo)))
             else:
                 self.error(f"Elemento de clase inválido: {self.current_token.valor}")
             
@@ -200,12 +279,25 @@ class ParserOficial:
             return self.parse_simple_statement()
     
     def parse_if_statement(self):
-        """<if_statement> ::= "when" <condicion> "{" <statements> "}" ["otherwise" "{" <statements> "}"]"""
+        """Parsea estructuras condicionales
+        
+        Gramática: <if_statement> ::= "when" <condicion> "{" <statements> "}" 
+                                       ["otherwise" "{" <statements> "}"]
+        
+        Returns:
+            IfStatementNode con condición, bloque then y bloque else opcional
+        """
+        self.check_nesting_depth("when")
         self.expect(TokenType.KEYWORD, "when")
         condicion = self.parse_expresion()
         self.expect(TokenType.DELIMITER, "{")
         self.skip_newlines()
+        
+        # Incrementar profundidad para el bloque then
+        self.nesting_depth += 1
         bloque_then = self.parse_statements()
+        self.nesting_depth -= 1
+        
         self.expect(TokenType.DELIMITER, "}")
         
         bloque_else = None
@@ -213,13 +305,26 @@ class ParserOficial:
             self.advance()
             self.expect(TokenType.DELIMITER, "{")
             self.skip_newlines()
+            
+            # Incrementar profundidad para el bloque else
+            self.nesting_depth += 1
             bloque_else = self.parse_statements()
+            self.nesting_depth -= 1
+            
             self.expect(TokenType.DELIMITER, "}")
         
         return IfStatementNode(condicion, bloque_then, bloque_else)
     
     def parse_cycle_statement(self):
-        """<cycle_statement> ::= "cycle" <IDENTIFIER> ["from" <expresion>] ["to" <expresion>] "{" <statements> "}" """
+        """Parsea bucles iterativos
+        
+        Gramática: <cycle_statement> ::= "cycle" <IDENTIFIER> ["from" <expresion>] 
+                                          ["to" <expresion>] "{" <statements> "}"
+        
+        Returns:
+            CycleStatementNode con variable, inicio, fin y cuerpo
+        """
+        self.check_nesting_depth("cycle")
         self.expect(TokenType.KEYWORD, "cycle")
         variable = self.expect(TokenType.IDENTIFIER).valor
         
@@ -235,7 +340,12 @@ class ParserOficial:
         
         self.expect(TokenType.DELIMITER, "{")
         self.skip_newlines()
+        
+        # Incrementar profundidad para el cuerpo del ciclo
+        self.nesting_depth += 1
         cuerpo = self.parse_statements()
+        self.nesting_depth -= 1
+        
         self.expect(TokenType.DELIMITER, "}")
         
         return CycleStatementNode(variable, inicio, fin, cuerpo)
@@ -255,17 +365,29 @@ class ParserOficial:
         return DisplayNode(expresion)
     
     def parse_simple_statement(self):
-        """<simple_statement> ::= <asignacion> | <expresion> ";" """
-        # Verificar si es una asignacion (identificador set expresion)
+        """Parsea statements simples (asignaciones, llamadas a función, expresiones)
+        
+        Gramática: <simple_statement> ::= <asignacion> | <llamada> | <expresion> ";"
+        
+        Maneja:
+        - Asignaciones: variable set valor;
+        - Asignaciones a miembros: self.atributo set valor; o objeto.atributo set valor;
+        - Llamadas a función: funcion();
+        - Llamadas a método: objeto.metodo();
+        - Expresiones seguidas de punto y coma
+        
+        Returns:
+            Nodo AST del statement
+        """
+        # Verificar si es una asignación o llamada/expresión
         if (self.match(TokenType.IDENTIFIER) or 
             (self.match(TokenType.KEYWORD) and self.current_token.valor == "self")):
             
-            
             checkpoint = self.current
             
-            # Intentar parsear como asignacion
+            # Intentar parsear como asignación o llamada
             try:
-             
+                # Parsear el lado izquierdo
                 if self.current_token.valor == "self":
                     self.advance()  # consumir 'self'
                     self.expect(TokenType.DELIMITER, ".")
@@ -274,7 +396,52 @@ class ParserOficial:
                 else:
                     nombre = self.current_token.valor
                     self.advance()
-                    izquierda = IdentificadorNode(nombre)
+                    
+                    # Verificar si es acceso a miembro
+                    if self.match(TokenType.DELIMITER, "."):
+                        self.advance()  # consumir '.'
+                        miembro = self.expect(TokenType.IDENTIFIER).valor
+                        
+                        # Verificar si es llamada a método
+                        if self.match(TokenType.DELIMITER, "("):
+                            self.advance()  # consumir '('
+                            argumentos = []
+                            
+                            if not self.match(TokenType.DELIMITER, ")"):
+                                argumentos.append(self.parse_expresion())
+                                while self.match(TokenType.DELIMITER, ","):
+                                    self.advance()
+                                    argumentos.append(self.parse_expresion())
+                            
+                            self.expect(TokenType.DELIMITER, ")")
+                            self.expect(TokenType.DELIMITER, ";")
+                            
+                            # Crear nodo de llamada a método
+                            # Por ahora lo representamos como acceso + llamada
+                            objeto = IdentificadorNode(nombre)
+                            acceso = AttributeAccessNode(objeto, miembro)
+                            return LlamadaFuncionNode(f"{nombre}.{miembro}", argumentos)
+                        else:
+                            # Es acceso a atributo, puede ser asignación
+                            izquierda = AttributeAccessNode(IdentificadorNode(nombre), miembro)
+                    else:
+                        # Es un identificador simple, puede ser llamada o asignación
+                        # Verificar si es llamada a función
+                        if self.match(TokenType.DELIMITER, "("):
+                            self.advance()  # consumir '('
+                            argumentos = []
+                            
+                            if not self.match(TokenType.DELIMITER, ")"):
+                                argumentos.append(self.parse_expresion())
+                                while self.match(TokenType.DELIMITER, ","):
+                                    self.advance()
+                                    argumentos.append(self.parse_expresion())
+                            
+                            self.expect(TokenType.DELIMITER, ")")
+                            self.expect(TokenType.DELIMITER, ";")
+                            return LlamadaFuncionNode(nombre, argumentos)
+                        else:
+                            izquierda = IdentificadorNode(nombre)
                 
                 # Verificar si es asignación con 'set'
                 if self.match(TokenType.WORD_OPERATOR, "set"):
@@ -283,7 +450,7 @@ class ParserOficial:
                     self.expect(TokenType.DELIMITER, ";")
                     return AssignmentNode(izquierda, valor)
                 else:
-                    # No es asignacion, hacer backtrack y parsear como expresion
+                    # No es asignación, hacer backtrack y parsear como expresión
                     self.current = checkpoint
                     self.current_token = self.tokens[self.current] if self.current < len(self.tokens) else None
                     
@@ -292,7 +459,7 @@ class ParserOficial:
                 self.current = checkpoint
                 self.current_token = self.tokens[self.current] if self.current < len(self.tokens) else None
         
-       
+        # Parsear como expresión general
         expresion = self.parse_expresion()
         self.expect(TokenType.DELIMITER, ";")
         return expresion
@@ -374,21 +541,58 @@ class ParserOficial:
         return self.parse_primary()
     
     def parse_primary(self):
-        """<literal> ::= <STRING> | <NUMBER> | <BOOLEAN> | <IDENTIFIER> | <llamada_funcion>"""
+        """Parsea expresiones primarias (literales, identificadores, llamadas)
+        
+        Gramática: <primary> ::= <STRING> | <NUMBER> | <BOOLEAN> | <CHARACTER> |
+                              <IDENTIFIER> | <IDENTIFIER> "(" <args> ")" |
+                              <IDENTIFIER> "." <IDENTIFIER> |
+                              "(" <expresion> ")"
+        
+        Returns:
+            Nodo AST correspondiente al tipo de expresión primaria
+        """
+        # Literales de texto
         if self.match(TokenType.STRING):
             valor = self.current_token.valor
             self.advance()
             return LiteralNode("STRING", valor)
         
+        # Números (enteros y decimales)
         elif self.match(TokenType.NUMBER):
             valor = self.current_token.valor
             self.advance()
             return LiteralNode("NUMBER", valor)
         
+        # Booleanos (true/false)
         elif self.match(TokenType.BOOLEAN):
             valor = self.current_token.valor
             self.advance()
             return LiteralNode("BOOLEAN", valor)
+        
+        # Caracteres individuales
+        elif self.match(TokenType.CHARACTER):
+            valor = self.current_token.valor
+            self.advance()
+            return LiteralNode("CHARACTER", valor)
+        
+        # Palabra clave 'forge' para crear instancias
+        elif self.match(TokenType.KEYWORD, "forge"):
+            self.advance()  # consumir 'forge'
+            nombre_clase = self.expect(TokenType.IDENTIFIER).valor
+            self.expect(TokenType.DELIMITER, "(")
+            
+            # Parsear argumentos del constructor
+            argumentos = []
+            if not self.match(TokenType.DELIMITER, ")"):
+                argumentos.append(self.parse_expresion())
+                while self.match(TokenType.DELIMITER, ","):
+                    self.advance()
+                    argumentos.append(self.parse_expresion())
+            
+            self.expect(TokenType.DELIMITER, ")")
+            
+            # Retornar como una llamada especial de construcción
+            return LlamadaFuncionNode(f"forge<{nombre_clase}>", argumentos)
         
         elif self.match(TokenType.IDENTIFIER) or self.match(TokenType.BUILTIN) or (self.match(TokenType.KEYWORD) and self.current_token.valor == "self"):
             nombre = self.current_token.valor
@@ -427,17 +631,38 @@ class ParserOficial:
             self.error(f"Expresión inválida: {self.current_token.valor if self.current_token else 'EOF'}")
 
 def parse_hoop_oficial(tokens):
-    """Función principal para parsing de código HOOP"""
+    """Función principal para parsing de código HOOP
+    
+    Args:
+        tokens: Lista de tokens del analizador léxico
+        
+    Returns:
+        AST del programa
+        
+    Raises:
+        ParseError: Si hay errores de sintaxis
+    """
     parser = ParserOficial(tokens)
     return parser.parse()
 
 def parse_tokens(tokens):
-    """Función de compatibilidad con la interfaz GUI existente"""
+    """Función de compatibilidad con la interfaz GUI existente
+    
+    Args:
+        tokens: Lista de tokens del analizador léxico
+        
+    Returns:
+        Tupla (ast, errores) donde:
+        - ast: Árbol de sintaxis abstracta o None si hay errores
+        - errores: Lista de mensajes de error (vacía si no hay errores)
+    """
     try:
         parser = ParserOficial(tokens)
         ast = parser.parse()
         return ast, []  # Sin errores
     except ParseError as e:
         return None, [str(e)]  # AST nulo, lista de errores
+    except ValueError as e:
+        return None, [f"Error de validación: {str(e)}"]
     except Exception as e:
-        return None, [f"Error inesperado: {str(e)}"]
+        return None, [f"Error inesperado durante el parsing: {str(e)}"]
