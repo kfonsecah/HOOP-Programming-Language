@@ -25,7 +25,7 @@ class HoopType(Enum):
     FRACT = "fract"      # Decimal
     TEXT = "text"        # Cadena
     LOGIC = "logic"      # Booleano
-    CHAR = "char"        # Carácter
+    CHAR = "char"        # Caracter
     VOID = "void"        # Sin valor (funciones sin return)
     CLASS = "class"      # Tipo clase
     ANY = "any"          # Tipo desconocido/inferido

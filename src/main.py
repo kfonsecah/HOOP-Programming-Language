@@ -1,13 +1,3 @@
-"""
-Archivo principal para pruebas del lenguaje HOOP
-===============================================
-
-Este archivo permite probar el compilador/interprete completo de HOOP,
-pasando codigo por todas las fases: lexer → parser → semantic → interpreter
-
-
-"""
-
 import sys
 import os
 from pathlib import Path
@@ -18,8 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from core.lexer import AnalizadorLexico, analizar_codigo_hoop
 from core.parser_oficial import parse_tokens, parse_hoop_oficial
-#from core.semantic import HoopSemanticAnalyzer, analyze_hoop_semantics
-#from core.interpreter import HoopInterpreter, execute_hoop_code, HoopRuntimeError
+
 
 def print_banner():
     """Imprime el banner del interprete HOOP"""
