@@ -37,18 +37,18 @@ class Sidebar(tk.Frame):
                        foreground=LETTER_COLOR,
                        relief='flat')
         
-        # Frame para la barra de título que contendrá el título y los botones
+        # Frame para la barra de titulo que contendra el titulo y los botones
         title_bar_frame = tk.Frame(self, bg=BACKGROUND_COLOR)
         title_bar_frame.pack(fill=tk.X, padx=5, pady=(0, 5))
 
-        # Título "EXPLORADOR" a la izquierda
+        # Titulo "EXPLORADOR" a la izquierda
         title_label = tk.Label(title_bar_frame, text="EXPLORADOR", 
                               bg=BACKGROUND_COLOR, fg=LETTER_COLOR,
                               font=("Arial", 12, "bold"),
                               bd=0, highlightthickness=0)
         title_label.pack(side=tk.LEFT)
 
-        # Frame para los botones de acción a la derecha
+        # Frame para los botones de accion a la derecha
         action_buttons_frame = tk.Frame(title_bar_frame, bg=BACKGROUND_COLOR)
         action_buttons_frame.pack(side=tk.RIGHT)
 
@@ -79,7 +79,7 @@ class Sidebar(tk.Frame):
         self.tree.bind('<<TreeviewOpen>>', self.on_folder_open)
         self.tree.bind('<Double-1>', self.on_file_double_click)
 
-        # --- Lógica de Drag and Drop ---
+        # --- Logica de Drag and Drop ---
         self.tree.bind("<ButtonPress-1>", self.on_drag_start)
         self.tree.bind("<B1-Motion>", self.on_drag_motion)
         self.tree.bind("<ButtonRelease-1>", self.on_drop)
@@ -137,21 +137,21 @@ class Sidebar(tk.Frame):
         if path is None:
             # Obtener el directorio del proyecto (subir desde src)
             current_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            path = os.path.dirname(current_dir)  # Directorio raíz del proyecto
-            self.project_root = path # Guardar la raíz del proyecto
+            path = os.path.dirname(current_dir)  # Directorio raiz del proyecto
+            self.project_root = path # Guardar la raiz del proyecto
         else:
-            self.project_root = path # Guardar la raíz del proyecto
+            self.project_root = path # Guardar la raiz del proyecto
         
         # Limpiar el tree
         for item in self.tree.get_children():
             self.tree.delete(item)
         
-        # Insertar el directorio raíz
+        # Insertar el directorio raiz
         project_name = os.path.basename(path)
         root_node = self.tree.insert('', 'end', text=f"{project_name}", 
                                     values=[path], open=True, image=self.folder_open_icon, tags=('folder',))
         
-        # Cargar contenido del directorio raíz
+        # Cargar contenido del directorio raiz
         self.load_folder_contents(root_node, path)
     
     def load_folder_contents(self, parent_node, folder_path):
@@ -182,10 +182,10 @@ class Sidebar(tk.Frame):
                         folder_node = self.tree.insert(parent_node, 'end', 
                                                      text=f"{folder_name}",
                                                      values=[folder_path], image=self.folder_open_icon, tags=('folder',))
-                    # Insertar un item dummy para mostrar la flecha de expansión
+                    # Insertar un item dummy para mostrar la flecha de expansion
                     self.tree.insert(folder_node, 'end', text="", values=["dummy"], tags=('folder',))
             
-            # Insertar archivos después
+            # Insertar archivos despues
             for file_name, file_path in files:
                 if not file_name.startswith('.'):  # Ignorar archivos ocultas
                     if hasattr(self, 'file_icon') and self.file_icon:
@@ -202,10 +202,10 @@ class Sidebar(tk.Frame):
             pass  # Ignorar carpetas sin permisos
 
     def get_selected_path(self):
-        """Obtiene la ruta del directorio seleccionado o la raíz del proyecto."""
+        """Obtiene la ruta del directorio seleccionado o la raiz del proyecto."""
         selected_item = self.tree.focus()
         if not selected_item:
-            # Si no hay nada seleccionado, usar la raíz del proyecto
+            # Si no hay nada seleccionado, usar la raiz del proyecto
             return getattr(self, 'project_root', None)
         
         # Obtener la ruta del item seleccionado
@@ -233,7 +233,7 @@ class Sidebar(tk.Frame):
             self.load_folder_contents(node, path)
 
     def create_new_folder(self, event=None):
-        """Crea una nueva carpeta en la ubicación seleccionada."""
+        """Crea una nueva carpeta en la ubicacion seleccionada."""
         target_path = self.get_selected_path()
         if not target_path:
             print("No se pudo determinar la ruta de destino.")
@@ -246,21 +246,21 @@ class Sidebar(tk.Frame):
                 os.makedirs(new_folder_path)
                 print(f"Carpeta creada: {new_folder_path}")
                 # Refrescar el explorador para mostrar la nueva carpeta
-                self.load_directory(self.project_root) # Solución simple: recargar todo
+                self.load_directory(self.project_root) # Solucion simple: recargar todo
             except Exception as e:
                 print(f"Error al crear la carpeta: {e}")
 
     def create_new_file(self, event=None):
-        """Crea un nuevo archivo .hoop en la ubicación seleccionada."""
+        """Crea un nuevo archivo .hoop en la ubicacion seleccionada."""
         target_path = self.get_selected_path()
         if not target_path:
             print("No se pudo determinar la ruta de destino.")
             return
 
-        file_name = simpledialog.askstring("Nuevo Archivo", "Ingrese el nombre del nuevo archivo (sin extensión):")
+        file_name = simpledialog.askstring("Nuevo Archivo", "Ingrese el nombre del nuevo archivo (sin extension):")
         if file_name:
             try:
-                # Añadir la extensión .hoop
+                # Anadir la extension .hoop
                 full_file_name = f"{file_name}.hoop"
                 new_file_path = os.path.join(target_path, full_file_name)
                 
@@ -269,7 +269,7 @@ class Sidebar(tk.Frame):
                     pass
                 print(f"Archivo creado: {new_file_path}")
                 # Refrescar el explorador para mostrar el nuevo archivo
-                self.load_directory(self.project_root) # Solución simple: recargar todo
+                self.load_directory(self.project_root) # Solucion simple: recargar todo
             except Exception as e:
                 print(f"Error al crear el archivo: {e}")
     
@@ -299,13 +299,13 @@ class Sidebar(tk.Frame):
             self.last_highlighted = target_id
 
     def on_drop(self, event):
-        """Maneja la lógica de soltar el elemento."""
+        """Maneja la logica de soltar el elemento."""
         # Limpiar resaltado
         if self.last_highlighted:
             self.tree.item(self.last_highlighted, tags=self.tree.item(self.last_highlighted, 'tags'))
             self.last_highlighted = None
 
-        # Elemento de destino (donde se suelta el ratón)
+        # Elemento de destino (donde se suelta el raton)
         target_id = self.tree.identify_row(event.y)
         
         # Si no hay un origen, no hacer nada
@@ -315,11 +315,11 @@ class Sidebar(tk.Frame):
 
         source_path = self.drag_data["path"]
         
-        # Si no hay un destino claro, usar la raíz del proyecto
+        # Si no hay un destino claro, usar la raiz del proyecto
         if not target_id:
-            # Verificar si la raíz del proyecto está definida
+            # Verificar si la raiz del proyecto esta definida
             if not hasattr(self, 'project_root') or not self.project_root:
-                print("Error: La raíz del proyecto no está definida.")
+                print("Error: La raiz del proyecto no esta definida.")
                 self.reset_drag_data()
                 return
             

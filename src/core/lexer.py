@@ -7,9 +7,9 @@ from enum import Enum
 
 # Palabras reservadas del lenguaje HOOP
 RESERVADAS = {
-    # === (POO BÁSICO) ===
+    # === (POO BASICO) ===
     "mold",     # class
-    # "bond",     # interface - NO USADO EN POO BÁSICO
+    # "bond",     # interface - NO USADO EN POO BASICO
     # "listing",  # enum - FUTURO
     # "layout",   # struct - FUTURO
     # "unit",     # package - FUTURO
@@ -23,7 +23,7 @@ RESERVADAS = {
     "skip",     # continue
     "answer",   # return
     "select",   # switch
-    "case",     # caso específico en select
+    "case",     # caso especifico en select
     "default",  # caso por defecto en select
     "from",     # desde (en ciclos)
     "to",       # hasta (en ciclos)
@@ -34,9 +34,9 @@ RESERVADAS = {
     "void",     # null
     # "parent",   # super - NO USADO (sin herencia)
     
-    # === MODIFICADORES DE ACCESO - NO USADOS (todo público) ===
-    # "open",     # public - NO USADO (todo es público por defecto)
-    # "sealed",   # private - NO USADO (sin encapsulación avanzada)
+    # === MODIFICADORES DE ACCESO - NO USADOS (todo publico) ===
+    # "open",     # public - NO USADO (todo es publico por defecto)
+    # "sealed",   # private - NO USADO (sin encapsulacion avanzada)
     # "linked",   # protected - NO USADO (sin herencia)
     
     # === MANEJO DE ERRORES ===
@@ -45,72 +45,28 @@ RESERVADAS = {
     "ensure",   # finally
     "throw",    # throw
     
-    # === DECLARACIÓN ===
+    # === DECLARACION ===
     "fixed",    # const
-    "data",     # var (tipado genérico/inferido)
+    "data",     # var (tipado generico/inferido)
     "action",   # fun
     "display",  # print, printf
     
 }
 
-#########################################
-# --- POO BASICO HOOP - LIMITACIONES --- #
-#########################################
-
-"""
-
-EJEMPLO DE SINTAXIS POO BÁSICO (SIN CONSTRUCT):
-mold Persona {
-    text nombre;
-    whole edad;
-    
-    # Los constructores ahora se definen como métodos action normales
-    action inicializar(text n, whole e) {
-        self.nombre set n;
-        self.edad set e;
-    }
-    
-    action saludar() {
-        display "Hola, soy " plus self.nombre;
-    }
-    
-    action clasificarEdad() {
-        select self.edad {
-            case 0: {
-                display "Bebé";
-            }
-            case 13: {
-                display "Adolescente";
-            }
-            case 18: {
-                display "Adulto";
-            }
-            default: {
-                display "Otra categoría";
-            }
-        }
-    }
-}
-
-data persona set forge Persona();
-persona.inicializar("Juan", 25);
-persona.saludar();
-persona.clasificarEdad();
-"""
 
 # Operadores en palabras (exclusivos de HOOP)
 OPERADORES_PALABRAS = {
-    # === ASIGNACIÓN ===
-    "set",       # = (asignación)
+    # === ASIGNACION ===
+    "set",       # = (asignacion)
     
-    # === ARITMÉTICOS ===
+    # === ARITMETICOS ===
     "plus",      # + (suma)
     "minus",     # - (resta)
-    "times",     # * (multiplicación)
-    "divide",    # / (división)
-    "mod",       # % (módulo)
+    "times",     # * (multiplicacion)
+    "divide",    # / (division)
+    "mod",       # % (modulo)
     
-    # === COMPARACIÓN ===
+    # === COMPARACION ===
     "equals",    # == (igual)
     "notequals", # != (diferente)
     "greater",   # > (mayor que)
@@ -118,26 +74,24 @@ OPERADORES_PALABRAS = {
     "greatereq", # >= (mayor o igual)
     "lesseq",    # <= (menor o igual)
     
-    # === LÓGICOS ===
-    "and",       # && (y lógico)
-    "or",        # || (o lógico)
-    "not"        # ! (negación lógica)
+    # === LOGICOS ===
+    "and",       # && (y logico)
+    "or",        # || (o logico)
+    "not"        # ! (negacion logica)
 }
 
-# Tipos de datos (para tipado explícito)
+# Tipos de datos (para tipado explicito)
 TIPOS = {
     # Simples
-    "logic",  # boolean - tipado explícito
-    "whole",  # integer - tipado explícito
-    "fract",  # decimal / float - tipado explícito
-    "text",   # string - tipado explícito
-    "char",   # character - tipado explícito
+    "logic",  # boolean - tipado explicito
+    "whole",  # integer - tipado explicito
+    "fract",  # decimal / float - tipado explicito
+    "text",   # string - tipado explicito
+    "char",   # character - tipado explicito
     # Compuestos
-    "grid",   # matrix - tipado explícito
-    "chain"   # linked list - tipado explícito
+    "grid",   # matrix - tipado explicito
+    "chain"   # linked list - tipado explicito
 }
-
-
 
 
 # Palabras pregonadas (built-in functions)
@@ -212,7 +166,7 @@ class TokenType(Enum):
     EOF = "EOF"
     ERROR = "ERROR"
 
-# Clase Token (elemento léico)
+# Clase Token (elemento lexico)
 class Token:
     def __init__(self, tipo, valor, linea, columna, posicion=0):
         self.tipo = tipo
@@ -228,7 +182,7 @@ class Token:
         return self.__str__()
 
 #######################################
-# --- ANALIZADOR LÉXICO PRINCIPAL --- #
+# --- ANALIZADOR LEXICO PRINCIPAL --- #
 #######################################
 
 class AnalizadorLexico:
@@ -248,19 +202,19 @@ class AnalizadorLexico:
         self.errores = []
     
     def obtener_caracter_actual(self):
-        """Obtiene el caracter en la posición actual"""
+        """Obtiene el caracter en la posicion actual"""
         if self.posicion >= len(self.codigo):
             return None
         return self.codigo[self.posicion]
     
     def obtener_siguiente_caracter(self):
-        """Mira el siguiente carácter sin avanzar"""
+        """Mira el siguiente caracter sin avanzar"""
         if self.posicion + 1 >= len(self.codigo):
             return None
         return self.codigo[self.posicion + 1]
     
     def avanzar(self):
-        """Avanza un carácter y actualiza línea/columna"""
+        """Avanza un caracter y actualiza linea/columna"""
         if self.posicion < len(self.codigo):
             if self.codigo[self.posicion] == '\n':
                 self.linea_actual += 1
@@ -276,21 +230,21 @@ class AnalizadorLexico:
             self.avanzar()
     
     def crear_token(self, tipo, valor, linea=None, columna=None):
-        """Crea un token con posición actual o especificada"""
+        """Crea un token con posicion actual o especificada"""
         return Token(tipo, valor, 
                     linea or self.linea_actual, 
                     columna or self.columna_actual, 
                     self.posicion)
     
     def leer_numero(self):
-        """Lee números (enteros y decimales)
+        """Lee numeros (enteros y decimales)
         
         Formatos soportados:
         - Enteros: 42, 0, 123
         - Decimales: 3.14, 0.5, 123.456
         
         Returns:
-            Token de tipo NUMBER con el valor numérico como string
+            Token de tipo NUMBER con el valor numerico como string
         """
         linea_inicio = self.linea_actual
         columna_inicio = self.columna_actual
@@ -318,9 +272,9 @@ class AnalizadorLexico:
                 valor += self.obtener_caracter_actual()
                 self.avanzar()
             
-            # Verificar múltiples puntos decimales (error común)
+            # Verificar multiples puntos decimales (error comun)
             if self.obtener_caracter_actual() == '.':
-                self.errores.append(f"Número mal formado con múltiples puntos decimales en línea {linea_inicio}:{columna_inicio}")
+                self.errores.append(f"Numero mal formado con multiples puntos decimales en linea {linea_inicio}:{columna_inicio}")
                 # Consumir el punto extra
                 self.avanzar()
         
@@ -333,7 +287,7 @@ class AnalizadorLexico:
             delimitador: Comilla que delimita la cadena (' o ")
         
         Returns:
-            Token de tipo STRING o CHARACTER según corresponda
+            Token de tipo STRING o CHARACTER segun corresponda
         """
         linea_inicio = self.linea_actual
         columna_inicio = self.columna_actual
@@ -369,10 +323,10 @@ class AnalizadorLexico:
         if self.obtener_caracter_actual() == delimitador:
             self.avanzar()  # saltar comilla final
         else:
-            self.errores.append(f"Cadena sin cerrar en línea {linea_inicio}:{columna_inicio}")
+            self.errores.append(f"Cadena sin cerrar en linea {linea_inicio}:{columna_inicio}")
             return Token(TokenType.ERROR, valor, linea_inicio, columna_inicio, self.posicion)
         
-        # Determinar si es un carácter individual (solo con comillas simples y un carácter)
+        # Determinar si es un caracter individual (solo con comillas simples y un caracter)
         if delimitador == "'" and len(valor) == 1:
             return Token(TokenType.CHARACTER, valor, linea_inicio, columna_inicio, self.posicion)
         
@@ -382,7 +336,7 @@ class AnalizadorLexico:
         """Lee identificadores, palabras clave, tipos, palabras pregonadas y operadores en palabras
         
         Returns:
-            Token clasificado según el tipo de palabra reconocida
+            Token clasificado segun el tipo de palabra reconocida
         """
         linea_inicio = self.linea_actual
         columna_inicio = self.columna_actual
@@ -395,8 +349,8 @@ class AnalizadorLexico:
             valor += self.obtener_caracter_actual()
             self.avanzar()
         
-        # Clasificar según las tablas definidas (orden optimizado por frecuencia de uso)
-        # Primero verificar booleanos (más rápido, solo 2 valores)
+        # Clasificar segun las tablas definidas (orden optimizado por frecuencia de uso)
+        # Primero verificar booleanos (mas rapido, solo 2 valores)
         if valor in ['true', 'false']:
             tipo = TokenType.BOOLEAN
         # Luego operadores en palabras (muy comunes: set, plus, equals, etc.)
@@ -411,14 +365,14 @@ class AnalizadorLexico:
         # Funciones built-in
         elif valor in PALABRAS_PREGONADAS:
             tipo = TokenType.BUILTIN
-        # Si no coincide con ninguna categoría, es un identificador
+        # Si no coincide con ninguna categoria, es un identificador
         else:
             tipo = TokenType.IDENTIFIER
         
         return Token(tipo, valor, linea_inicio, columna_inicio, self.posicion)
     
     def leer_comentario(self, prefijo=""):
-        """Lee comentarios de línea (# o //)
+        """Lee comentarios de linea (# o //)
         
         Args:
             prefijo: Prefijo del comentario ya consumido (ej: '#', '//')
@@ -427,7 +381,7 @@ class AnalizadorLexico:
         columna_inicio = self.columna_actual
         comentario = ""
         
-        # Leer hasta el final de la línea
+        # Leer hasta el final de la linea
         while (self.obtener_caracter_actual() and 
                self.obtener_caracter_actual() != '\n'):
             comentario += self.obtener_caracter_actual()
@@ -456,7 +410,7 @@ class AnalizadorLexico:
             self.avanzar()
             return Token(TokenType.OPERATOR, valor, linea_inicio, columna_inicio, self.posicion)
         
-        # Verificar operadores de un carácter
+        # Verificar operadores de un caracter
         if char1 in OPERADORES:
             valor = char1
             self.avanzar()
@@ -465,20 +419,20 @@ class AnalizadorLexico:
         # Operador desconocido
         valor = char1
         self.avanzar()
-        self.errores.append(f"Operador desconocido '{valor}' en línea {linea_inicio}:{columna_inicio}")
+        self.errores.append(f"Operador desconocido '{valor}' en linea {linea_inicio}:{columna_inicio}")
         return Token(TokenType.ERROR, valor, linea_inicio, columna_inicio, self.posicion)
     
 
     
     def analizar(self):
         """
-        FUNCIÓN PRINCIPAL DEL ANALIZADOR LÉXICO
+        FUNCION PRINCIPAL DEL ANALIZADOR LEXICO
         
         Lee renglones sucesivos del programa de entrada,
-        los descompone en elementos léxicos individuales,
+        los descompone en elementos lexicos individuales,
         y retorna la secuencia de tokens.
         
-        Esta es la fase de traducción que más tiempo requiere.
+        Esta es la fase de traduccion que mas tiempo requiere.
         """
         while self.posicion < len(self.codigo):
             # Omitir espacios en blanco
@@ -486,19 +440,19 @@ class AnalizadorLexico:
             
             char = self.obtener_caracter_actual()
             
-            # Fin del código
+            # Fin del codigo
             if char is None:
                 break
             
-            # === RECONOCIMIENTO DE ELEMENTOS LÉXICOS ===
+            # === RECONOCIMIENTO DE ELEMENTOS LEXICOS ===
             
-            # Saltos de línea
+            # Saltos de linea
             elif char == '\n':
                 token = self.crear_token(TokenType.NEWLINE, char)
                 self.tokens.append(token)
                 self.avanzar()
             
-            # Números (123, 45.67)
+            # Numeros (123, 45.67)
             elif char.isdigit():
                 token = self.leer_numero()
                 self.tokens.append(token)
@@ -530,12 +484,12 @@ class AnalizadorLexico:
                 token = self.leer_operador()
                 self.tokens.append(token)
             
-            # Carácter desconocido
+            # Caracter desconocido
             else:
                 linea_error = self.linea_actual
                 columna_error = self.columna_actual
-                self.errores.append(f"Carácter desconocido '{char}' (código ASCII: {ord(char)}) en línea {linea_error}:{columna_error}")
-                # Crear token de error para mantener sincronización
+                self.errores.append(f"Caracter desconocido '{char}' (codigo ASCII: {ord(char)}) en linea {linea_error}:{columna_error}")
+                # Crear token de error para mantener sincronizacion
                 token = self.crear_token(TokenType.ERROR, char)
                 self.tokens.append(token)
                 self.avanzar()
@@ -553,38 +507,38 @@ class AnalizadorLexico:
         return self.errores
     
     def tiene_errores(self):
-        """Verifica si hay errores léxicos"""
+        """Verifica si hay errores lexicos"""
         return len(self.errores) > 0
     
     def imprimir_tokens(self):
         """Imprime todos los tokens de manera legible"""
-        print("=== ELEMENTOS LÉXICOS GENERADOS ===")
+        print("=== ELEMENTOS LEXICOS GENERADOS ===")
         for i, token in enumerate(self.tokens):
             if token.tipo != TokenType.NEWLINE:  
                 print(f"{i+1:3}: {token}")
         
         if self.errores:
-            print("\n=== ERRORES LÉXICOS ===")
+            print("\n=== ERRORES LEXICOS ===")
             for error in self.errores:
                 print(f"ERROR: {error}")
 
 #####################################
-# --- FUNCIÓN PRINCIPAL DE USO --- #
+# --- FUNCION PRINCIPAL DE USO --- #
 #####################################
 
 def analizar_codigo_hoop(codigo_fuente, mostrar_tokens=True):
     """
-    Función principal para usar el analizador léxico de HOOP
+    Funcion principal para usar el analizador lexico de HOOP
     
     Args:
-        codigo_fuente (str): El código HOOP a analizar
+        codigo_fuente (str): El codigo HOOP a analizar
         mostrar_tokens (bool): Si mostrar los tokens generados
     
     Returns:
         (tokens, errores)
     """
-    print("=== ANALIZADOR LÉXICO HOOP ===")
-    print(f"Código fuente:\n{codigo_fuente}\n")
+    print("=== ANALIZADOR LEXICO HOOP ===")
+    print(f"Codigo fuente:\n{codigo_fuente}\n")
     
     # Crear y ejecutar analizador
     analizador = AnalizadorLexico(codigo_fuente)
@@ -598,7 +552,7 @@ def analizar_codigo_hoop(codigo_fuente, mostrar_tokens=True):
     print(f"\nRESUMEN:")
     print(f"- Tokens generados: {len(tokens)}")
     print(f"- Errores encontrados: {len(analizador.obtener_errores())}")
-    print(f"- Líneas procesadas: {analizador.linea_actual}")
+    print(f"- Lineas procesadas: {analizador.linea_actual}")
     
     return tokens, analizador.obtener_errores()
 

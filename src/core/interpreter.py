@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """
-Intérprete de HOOP - Ejecuta el AST validado
+Interprete de HOOP - Ejecuta el AST validado
 
-Este intérprete recibe un AST validado por el analizador semántico
-y lo ejecuta traduciendo las construcciones de HOOP a Python.
-
-NO genera código máquina - ejecuta directamente interpretando el AST.
 """
 
 import math
@@ -15,12 +11,12 @@ from typing import Any, Dict, List, Optional
 from . import ast_nodes
 
 class ReturnException(Exception):
-    """Excepción para manejar el retorno de funciones (answer)"""
+    """Excepcion para manejar el retorno de funciones (answer)"""
     def __init__(self, value):
         self.value = value
 
 class HoopRuntimeError(Exception):
-    """Error en tiempo de ejecución"""
+    """Error en tiempo de ejecucion"""
     pass
 
 class HoopObject:
@@ -41,7 +37,7 @@ class HoopObject:
         return f"<{self.class_name} instance>"
 
 class ExecutionContext:
-    """Contexto de ejecución con scopes anidados"""
+    """Contexto de ejecucion con scopes anidados"""
     def __init__(self, parent=None):
         self.parent = parent
         self.variables = {}
@@ -58,7 +54,7 @@ class ExecutionContext:
             return self.variables[name]
         if self.parent:
             return self.parent.get_variable(name)
-        raise HoopRuntimeError(f"Variable '{name}' no está definida")
+        raise HoopRuntimeError(f"Variable '{name}' no esta definida")
     
     def set_variable(self, name: str, value: Any):
         """Asigna valor a variable existente"""
@@ -68,19 +64,19 @@ class ExecutionContext:
         if self.parent:
             self.parent.set_variable(name, value)
             return
-        raise HoopRuntimeError(f"Variable '{name}' no está definida")
+        raise HoopRuntimeError(f"Variable '{name}' no esta definida")
     
     def define_function(self, name: str, func_node):
-        """Define una función"""
+        """Define una funcion"""
         self.functions[name] = func_node
     
     def get_function(self, name: str):
-        """Obtiene una función"""
+        """Obtiene una funcion"""
         if name in self.functions:
             return self.functions[name]
         if self.parent:
             return self.parent.get_function(name)
-        raise HoopRuntimeError(f"Función '{name}' no está definida")
+        raise HoopRuntimeError(f"Funcion '{name}' no esta definida")
     
     def define_class(self, name: str, class_node):
         """Define una clase"""
@@ -92,10 +88,10 @@ class ExecutionContext:
             return self.classes[name]
         if self.parent:
             return self.parent.get_class(name)
-        raise HoopRuntimeError(f"Clase '{name}' no está definida")
+        raise HoopRuntimeError(f"Clase '{name}' no esta definida")
 
 class HoopInterpreter:
-    """Intérprete principal de HOOP"""
+    """Interprete principal de HOOP"""
     
     def __init__(self):
         self.global_context = ExecutionContext()
@@ -114,7 +110,7 @@ class HoopInterpreter:
             return False, f"Error inesperado: {e}"
     
     def visit(self, node):
-        """Visitor pattern - delega a método específico según tipo de nodo"""
+        """Visitor pattern - delega a metodo especifico segun tipo de nodo"""
         # Ignorar nodos None
         if node is None:
             return None
@@ -124,7 +120,7 @@ class HoopInterpreter:
         return method(node)
     
     def generic_visit(self, node):
-        """Fallback para nodos sin visitor específico"""
+        """Fallback para nodos sin visitor especifico"""
         raise HoopRuntimeError(f"No hay visitor para {node.__class__.__name__}")
     
     # ========== PROGRAMA Y DECLARACIONES ==========
@@ -135,12 +131,12 @@ class HoopInterpreter:
             self.visit(declaracion)
     
     def visit_DeclaracionNode(self, node: ast_nodes.DeclaracionNode):
-        """Ejecuta declaración de variable: data x set valor;"""
+        """Ejecuta declaracion de variable: data x set valor;"""
         valor = self.visit(node.valor)
         self.current_context.define_variable(node.nombre, valor)
     
     def visit_FuncionNode(self, node: ast_nodes.FuncionNode):
-        """Registra función para uso posterior"""
+        """Registra funcion para uso posterior"""
         self.current_context.define_function(node.nombre, node)
     
     def visit_ClaseNode(self, node: ast_nodes.ClaseNode):
@@ -157,7 +153,7 @@ class HoopInterpreter:
         print(output)
     
     def visit_AsignacionNode(self, node: ast_nodes.AsignacionNode):
-        """Ejecuta asignación: variable set valor;"""
+        """Ejecuta asignacion: variable set valor;"""
         valor = self.visit(node.valor)
         
         # Manejar el caso donde variable puede ser un IdentificadorNode o un string
@@ -216,7 +212,7 @@ class HoopInterpreter:
     def visit_LiteralNode(self, node: ast_nodes.LiteralNode):
         """Retorna valor literal convertido al tipo apropiado"""
         if node.tipo == "NUMBER":
-            # Convertir string a número
+            # Convertir string a numero
             valor_str = node.valor
             if '.' in valor_str:
                 return float(valor_str)
@@ -254,7 +250,7 @@ class HoopInterpreter:
         der = self.visit(node.derecha)
         op = node.operador
         
-        # Operaciones aritméticas
+        # Operaciones aritmeticas
         if op == 'plus' or op == '+':
             return izq + der
         elif op == 'minus' or op == '-':
@@ -263,12 +259,12 @@ class HoopInterpreter:
             return izq * der
         elif op == 'divide' or op == '/':
             if der == 0:
-                raise HoopRuntimeError("División por cero")
+                raise HoopRuntimeError("Division por cero")
             return izq / der
         elif op == 'mod' or op == '%':
             return izq % der
         
-        # Operaciones de comparación
+        # Operaciones de comparacion
         elif op == 'equals' or op == '==':
             return izq == der
         elif op == 'greater' or op == '>':
@@ -282,7 +278,7 @@ class HoopInterpreter:
         elif op == 'notequals' or op == '!=':
             return izq != der
         
-        # Operaciones lógicas
+        # Operaciones logicas
         elif op == 'and' or op == '&&':
             return self._is_truthy(izq) and self._is_truthy(der)
         elif op == 'or' or op == '||':

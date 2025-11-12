@@ -23,9 +23,9 @@ class Main (tk.Tk) :
         self.header = Header(self)
         self.header.pack(fill=tk.X)
 
-        # Frame principal para contener sidebar y área de contenido
+        # Frame principal para contener sidebar y area de contenido
         self.main_frame = tk.Frame(self, bg=BACKGROUND_COLOR, bd=0, highlightthickness=0)
-        self.main_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 0)) # Añadir padding vertical superior
+        self.main_frame.pack(fill=tk.BOTH, expand=True, pady=(15, 0)) # Anadir padding vertical superior
 
         # Sidebar a la izquierda, sin padding que pueda causar un borde
         self.sidebar = Sidebar(self.main_frame)
@@ -37,18 +37,18 @@ class Main (tk.Tk) :
         # Pasar la referencia del sidebar al header
         self.header.set_sidebar(self.sidebar)
 
-        # --- Área de Contenido y Pantalla de Bienvenida ---
+        # --- Area de Contenido y Pantalla de Bienvenida ---
 
-        # Crear un frame contenedor para el área derecha
+        # Crear un frame contenedor para el area derecha
         self.right_frame = tk.Frame(self.main_frame, bg=BACKGROUND_COLOR)
         self.right_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # --- Terminal ---
-        # PanedWindow para área principal y terminal
+        # PanedWindow para area principal y terminal
         self.paned_window = tk.PanedWindow(self.right_frame, orient=tk.VERTICAL, bg=BACKGROUND_COLOR, sashwidth=3, sashrelief=tk.FLAT, bd=0)
         self.paned_window.pack(fill=tk.BOTH, expand=True)
 
-        # Frame para el área principal
+        # Frame para el area principal
         self.top_frame = tk.Frame(self.paned_window, bg=BACKGROUND_COLOR)
         self.paned_window.add(self.top_frame)
 
@@ -64,22 +64,22 @@ class Main (tk.Tk) :
         self.welcome_screen = WelcomeScreen(self.top_frame)
         self.welcome_screen.pack(fill=tk.BOTH, expand=True)
 
-        # Área de contenido (inicialmente oculta)
+        # Area de contenido (inicialmente oculta)
         self.content_area = ContentArea(self.top_frame)
-        # Conectar el terminal con el área de contenido
+        # Conectar el terminal con el area de contenido
         self.content_area.set_terminal(self.terminal)
-        # No se empaqueta aquí, se gestionará su visibilidad
+        # No se empaqueta aqui, se gestionara su visibilidad
 
         # Pasar la referencia del content_area y el toggle_terminal al header
         self.header.set_content_area(self.content_area)
         self.header.set_toggle_terminal_command(self.toggle_terminal)
 
     def show_content_area(self):
-        """Muestra el área de contenido y oculta la pantalla de bienvenida."""
+        """Muestra el area de contenido y oculta la pantalla de bienvenida."""
         if not self.content_area.winfo_viewable():
             # Ocultar la pantalla de bienvenida
             self.welcome_screen.pack_forget()
-            # Mostrar el área de contenido
+            # Mostrar el area de contenido
             self.content_area.pack(fill=tk.BOTH, expand=True)
 
     def toggle_terminal(self):

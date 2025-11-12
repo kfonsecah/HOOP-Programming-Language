@@ -2,7 +2,7 @@
 
 # Palabras reservadas del lenguaje HOOP
 KEYWORDS = [
-    # === ESTRUCTURAS BÁSICAS (POO BÁSICO) ===
+    # === ESTRUCTURAS BASICAS (POO BASICO) ===
     "mold",     # class
     
     # === CONTROL DE FLUJO ===
@@ -14,12 +14,12 @@ KEYWORDS = [
     "skip",     # continue
     "answer",   # return
     "select",   # switch
-    "case",     # caso específico en select
+    "case",     # caso especifico en select
     "default",  # caso por defecto en select
     "from",     # desde (en ciclos)
     "to",       # hasta (en ciclos)
     
-    # === CREACIÓN DE OBJETOS ===
+    # === CREACION DE OBJETOS ===
     "forge",    # new (crear objeto)
     "self",     # this
     "void",     # null
@@ -30,9 +30,9 @@ KEYWORDS = [
     "ensure",   # finally
     "throw",    # throw
     
-    # === DECLARACIÓN ===
+    # === DECLARACION ===
     "fixed",    # const
-    "data",     # var (tipado genérico/inferido)
+    "data",     # var (tipado generico/inferido)
     "action",   # fun
     "display",  # print, printf
 ]
@@ -50,17 +50,17 @@ TYPES = [
 
 # Operadores en palabras (exclusivos de HOOP)
 WORD_OPERATORS = [
-    # === ASIGNACIÓN ===
-    "set",       # = (asignación)
+    # === ASIGNACION ===
+    "set",       # = (asignacion)
     
-    # === ARITMÉTICOS ===
+    # === ARITMETICOS ===
     "plus",      # + (suma)
     "minus",     # - (resta)
-    "times",     # * (multiplicación)
-    "divide",    # / (división)
-    "mod",       # % (módulo)
+    "times",     # * (multiplicacion)
+    "divide",    # / (division)
+    "mod",       # % (modulo)
     
-    # === COMPARACIÓN ===
+    # === COMPARACION ===
     "equals",    # == (igual)
     "notequals", # != (diferente)
     "greater",   # > (mayor que)
@@ -68,10 +68,10 @@ WORD_OPERATORS = [
     "greatereq", # >= (mayor o igual)
     "lesseq",    # <= (menor o igual)
     
-    # === LÓGICOS ===
-    "and",       # && (y lógico)
-    "or",        # || (o lógico)
-    "not"        # ! (negación lógica)
+    # === LOGICOS ===
+    "and",       # && (y logico)
+    "or",        # || (o logico)
+    "not"        # ! (negacion logica)
 ]
 
 # Palabras pregonadas (built-in functions)

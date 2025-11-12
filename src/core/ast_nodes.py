@@ -1,23 +1,10 @@
 #!/usr/bin/env python3
-"""
-Nodos del Árbol de Sintaxis Abstracta (AST) para HOOP
-
-Implementación basada en las especificaciones oficiales HOOP.pdf
-
-Estructura del AST:
-- ProgramaNode: Raíz del árbol, contiene todas las declaraciones
-- DeclaracionNode: Variables (data)
-- FuncionNode: Funciones (action)
-- ClaseNode: Clases (mold)
-- Statements: if (when), cycle, display, return (answer)
-- Expresiones: operaciones, literales, identificadores, llamadas
-"""
 
 class ASTNode:
     """Clase base abstracta para todos los nodos del AST
     
     Todos los nodos heredan de esta clase y deben implementar __repr__
-    para facilitar la depuración y visualización del árbol.
+    para facilitar la depuracionn.
     """
     pass
 
@@ -46,7 +33,7 @@ class FuncionNode(ASTNode):
         self.cuerpo = cuerpo
     
     def __repr__(self):
-        params = f"{len(self.parametros)} parámetros" if self.parametros else "sin parámetros"
+        params = f"{len(self.parametros)} parametros" if self.parametros else "sin parametros"
         return f"Funcion({self.nombre}, {params})"
 
 class ParametroNode(ASTNode):
@@ -71,7 +58,7 @@ class IfStatementNode(ASTNode):
     """Nodo para estructuras condicionales
     
     Sintaxis: when <condicion> { <statements> } [otherwise { <statements> }]
-    Gramática: <if_statement> ::= "when" <condicion> "{" <statements> "}" ["otherwise" "{" <statements> "}"]
+    Gramatica: <if_statement> ::= "when" <condicion> "{" <statements> "}" ["otherwise" "{" <statements> "}"]
     """
     def __init__(self, condicion, bloque_then, bloque_else=None):
         self.condicion = condicion
@@ -86,7 +73,7 @@ class CycleStatementNode(ASTNode):
     """Nodo para bucles iterativos
     
     Sintaxis: cycle <variable> [from <inicio>] [to <fin>] { <statements> }
-    Gramática: <cycle_statement> ::= "cycle" <IDENTIFIER> ["from" <expresion>] ["to" <expresion>] "{" <statements> "}"
+    Gramatica: <cycle_statement> ::= "cycle" <IDENTIFIER> ["from" <expresion>] ["to" <expresion>] "{" <statements> "}"
     """
     def __init__(self, variable, inicio, fin, cuerpo):
         self.variable = variable
@@ -98,10 +85,7 @@ class CycleStatementNode(ASTNode):
         return f"Cycle({self.variable}, {self.inicio} to {self.fin})"
 
 class OperacionNode(ASTNode):
-    """Nodo para operaciones binarias y unarias
-    
-    Para operaciones binarias: izquierda operador derecha
-    Para operaciones unarias: None operador derecha
+    """Nodo para operaciones binarias
     """
     def __init__(self, izquierda, operador, derecha):
         self.izquierda = izquierda
@@ -115,8 +99,7 @@ class OperacionNode(ASTNode):
 
 class LiteralNode(ASTNode):
     """Nodo para valores literales
-    
-    Tipos soportados: STRING, NUMBER, BOOLEAN, CHARACTER
+       STRING, NUMBER, BOOLEAN, CHARACTER
     """
     def __init__(self, tipo, valor):
         self.tipo = tipo
@@ -127,8 +110,6 @@ class LiteralNode(ASTNode):
 
 class IdentificadorNode(ASTNode):
     """Nodo para identificadores (variables, funciones, clases)
-    
-    Representa una referencia a un nombre en el código.
     """
     def __init__(self, nombre):
         self.nombre = nombre
@@ -137,9 +118,7 @@ class IdentificadorNode(ASTNode):
         return f"Id({self.nombre})"
 
 class LlamadaFuncionNode(ASTNode):
-    """Nodo para llamadas a función o método
-    
-    Sintaxis: nombre(arg1, arg2, ...)
+    """Nodo para llamadas a funcion o metodo
     """
     def __init__(self, nombre, argumentos):
         self.nombre = nombre
@@ -149,10 +128,7 @@ class LlamadaFuncionNode(ASTNode):
         return f"Llamada({self.nombre}, {len(self.argumentos)} args)"
 
 class AccesoMiembroNode(ASTNode):
-    """Nodo para acceso a atributos o métodos
-    
-    Sintaxis: objeto.miembro
-    También conocido como AttributeAccessNode en otras partes del código.
+    """Nodo para acceso a atributos o metodos
     """
     def __init__(self, objeto, miembro):
         self.objeto = objeto
@@ -161,7 +137,7 @@ class AccesoMiembroNode(ASTNode):
     def __repr__(self):
         return f"Acceso({self.objeto}.{self.miembro})"
 
-# Alias para compatibilidad con código existente
+
 AttributeAccessNode = AccesoMiembroNode
 
 class BloqueNode(ASTNode):
@@ -181,7 +157,7 @@ class ReturnNode(ASTNode):
         return f"Return({self.valor})"
 
 class DisplayNode(ASTNode):
-    """Nodo para impresión en consola
+    """
     
     Sintaxis: display <expresion>;
     """
@@ -192,10 +168,7 @@ class DisplayNode(ASTNode):
         return f"Display({self.expresion})"
 
 class AsignacionNode(ASTNode):
-    """Nodo para asignación de valores
-    
-    Sintaxis: variable set valor;
-    También conocido como AssignmentNode en otras partes del código.
+    """Nodo para asignacion
     """
     def __init__(self, variable, valor):
         self.variable = variable
@@ -204,13 +177,11 @@ class AsignacionNode(ASTNode):
     def __repr__(self):
         return f"Asignacion({self.variable} = {self.valor})"
 
-# Alias para compatibilidad con código existente
 AssignmentNode = AsignacionNode
 
 class OperacionUnaria(ASTNode):
     """Nodo para operaciones unarias
-    
-    Sintaxis: operador expresion (ej: not x, -5)
+    Sintaxis: operador <expresion>
     """
     def __init__(self, operador, expresion):
         self.operador = operador
@@ -220,7 +191,7 @@ class OperacionUnaria(ASTNode):
         return f"OperacionUnaria({self.operador} {self.expresion})"
 
 class ForgeNode(ASTNode):
-    """Nodo para construcción de objetos
+    """Nodo para objetos
     
     Sintaxis: forge Clase(arg1, arg2, ...)
     """
@@ -232,7 +203,7 @@ class ForgeNode(ASTNode):
         return f"Forge({self.clase}, {len(self.argumentos)} args)"
 
 class AsignacionMiembroNode(ASTNode):
-    """Nodo para asignación a atributo
+    """Nodo para asignacion a atributo
     
     Sintaxis: objeto.atributo set valor;
     """
@@ -245,7 +216,7 @@ class AsignacionMiembroNode(ASTNode):
         return f"AsignacionMiembro({self.objeto}.{self.miembro} = {self.valor})"
 
 class LlamadaMetodoNode(ASTNode):
-    """Nodo para llamada a método
+    """Nodo para llamada a metodo
     
     Sintaxis: objeto.metodo(arg1, arg2, ...)
     """
@@ -257,11 +228,9 @@ class LlamadaMetodoNode(ASTNode):
     def __repr__(self):
         return f"LlamadaMetodo({self.objeto}.{self.metodo}, {len(self.argumentos)} args)"
 
-# Alias adicionales para compatibilidad
 DisplayStatementNode = DisplayNode
 ReturnStatementNode = ReturnNode
 
-# Excepción para errores de parsing
 class ParseError(Exception):
     def __init__(self, mensaje, token=None):
         self.mensaje = mensaje

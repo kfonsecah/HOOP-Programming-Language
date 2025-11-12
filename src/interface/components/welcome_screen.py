@@ -12,7 +12,7 @@ class WelcomeScreen(tk.Frame):
         center_frame = tk.Frame(self, bg=BACKGROUND_COLOR)
         center_frame.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
 
-        # Logo de la aplicación
+        # Logo de la aplicacion
         try:
             logo_path = os.path.join(os.path.dirname(__file__), '..', 'assets', 'HOOP icon.png')
             logo_image = Image.open(logo_path).resize((100, 100), Image.Resampling.LANCZOS)
@@ -33,7 +33,7 @@ class WelcomeScreen(tk.Frame):
         )
         welcome_label.pack(pady=(10, 5))
 
-        # Subtítulo con instrucciones
+        # Subtitulo con instrucciones
         subtitle_label = tk.Label(
             center_frame,
             text="Seleccione un archivo para empezar a editar\no use el menú de Opciones para explorar el lenguaje.",

@@ -10,6 +10,8 @@ import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'core'))
 from core.lexer import AnalizadorLexico
 from core.parser_oficial import parse_tokens
+from core.semantic import analyze_hoop_semantics
+from core.interpreter import interpret_hoop
 
 class ContentArea(tk.Frame):
     def __init__(self, master, **kwargs):
@@ -94,20 +96,16 @@ class ContentArea(tk.Frame):
         self.text_area.bind('<Configure>', self.on_scroll)
 
     def set_terminal(self, terminal):
-        """Establece la referencia al terminal para mostrar la salida"""
         self.terminal = terminal
 
     def on_scroll(self, event=None):
-        """Maneja cualquier evento de scroll o cambio de vista."""
         self.line_numbers.redraw()
 
     def on_key_release(self, event=None):
-        """Llama al resaltador y a los numeros de linea cada vez que se suelta una tecla."""
         self.highlighter.highlight()
         self.line_numbers.redraw()
 
     def insert_code(self, code_snippet):
-        """Inserta un bloque de codigo en el area de texto y lo resalta."""
         self.current_file_path = None
         self.text_area.delete('1.0', tk.END)
         self.text_area.insert(tk.END, code_snippet)
@@ -115,7 +113,6 @@ class ContentArea(tk.Frame):
         self.line_numbers.redraw()
 
     def load_file(self, file_path):
-        """Lee el contenido de un archivo, lo muestra y lo resalta."""
         self.current_file_path = file_path
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -129,7 +126,6 @@ class ContentArea(tk.Frame):
             self.text_area.insert(tk.END, f"Error al abrir el archivo: {e}")
 
     def save_file(self, event=None):
-        """Guarda el contenido actual en el archivo."""
         if self.current_file_path:
             try:
                 with open(self.current_file_path, 'w', encoding='utf-8') as f:
@@ -141,7 +137,6 @@ class ContentArea(tk.Frame):
             self.save_file_as()
 
     def save_file_as(self, event=None):
-        """Abre un dialogo para guardar el archivo con un nuevo nombre."""
         file_path = filedialog.asksaveasfilename(
             defaultextension=".hoop",
             filetypes=[("HOOP Files", "*.hoop"), ("All Files", "*.*")]
@@ -151,14 +146,12 @@ class ContentArea(tk.Frame):
             self.save_file()
 
     def get_code(self):
-        """Obtiene el codigo actual del area de texto"""
         return self.text_area.get('1.0', 'end-1c')
 
     def compile_code(self, event=None):
-        """Ejecuta el analisis lexico del codigo HOOP"""
         code = self.get_code()
         if not code.strip():
-            self.show_message("No hay codigo para analizar", "warning")
+            self.show_message("No hay código para analizar", "warning")
             return
 
         self._ensure_terminal_visible()
@@ -168,47 +161,128 @@ class ContentArea(tk.Frame):
                 self.terminal.clear_problems()
                 self.terminal.show_tab('problems')
 
+            if self.terminal:
+                self.terminal.add_problem("╔═══════════════════════════════════════════╗")
+                self.terminal.add_problem("║   ANÁLISIS LÉXICO                         ║")
+                self.terminal.add_problem("╚═══════════════════════════════════════════╝")
+
             analizador = AnalizadorLexico(code)
             tokens = analizador.analizar()
 
             if self.terminal:
-                self.terminal.add_problem("=== ANALISIS LEXICO ===")
-                self.terminal.add_problem(f"Codigo analizado: {len(code)} caracteres")
                 self.terminal.add_problem(f"Tokens generados: {len(tokens)}")
                 
-                errores_lexicos = analizador.obtener_errores()
-                if errores_lexicos:
-                    self.terminal.add_problem("\n--- ERRORES LEXICOS ---")
+            errores_lexicos = analizador.obtener_errores()
+            if errores_lexicos:
+                if self.terminal:
+                    self.terminal.add_problem("\nERRORES LÉXICOS:")
                     for error in errores_lexicos:
-                        self.terminal.add_problem(f"ERROR: {error}")
-                else:
-                    self.terminal.add_problem("Sin errores lexicos")
+                        self.terminal.add_problem(f"  {error}")
+                return
+            else:
+                if self.terminal:
+                    self.terminal.add_problem("Sin errores léxicos\n")
 
-                self.terminal.add_problem("\n--- TOKENS GENERADOS ---")
-                tokens_to_show = min(20, len(tokens))
+            if self.terminal:
+                self.terminal.add_problem("Primeros tokens:")
+                tokens_to_show = min(10, len(tokens))
                 for i, token in enumerate(tokens[:tokens_to_show]):
                     if token.tipo.name != 'NEWLINE':
-                        self.terminal.add_problem(f"{i+1:3d}: {token.tipo.name:15} '{token.valor}' (linea {token.linea})")
+                        self.terminal.add_problem(f"  {i+1:2d}. {token.tipo.name:15} '{token.valor}' (línea {token.linea})")
                 
                 if len(tokens) > tokens_to_show:
-                    self.terminal.add_problem(f"... y {len(tokens) - tokens_to_show} tokens mas")
+                    self.terminal.add_problem(f"  ... y {len(tokens) - tokens_to_show} tokens más")
+                self.terminal.add_problem("")
 
-            print("Analisis lexico completado")
+            if self.terminal:
+                self.terminal.add_problem("╔═══════════════════════════════════════════╗")
+                self.terminal.add_problem("║   ANÁLISIS SINTÁCTICO                     ║")
+                self.terminal.add_problem("╚═══════════════════════════════════════════╝")
+
+            ast, errores_sintacticos = parse_tokens(tokens)
+
+            if errores_sintacticos:
+                if self.terminal:
+                    self.terminal.add_problem("\nERRORES SINTÁCTICOS:")
+                    for error in errores_sintacticos:
+                        self.terminal.add_problem(f"  {str(error)}")
+                return
+
+            if not ast:
+                if self.terminal:
+                    self.terminal.add_problem("\nERROR: No se pudo generar el AST")
+                return
+
+            if self.terminal:
+                ast_size = len(ast.declaraciones) if hasattr(ast, 'declaraciones') else 0
+                self.terminal.add_problem(f"AST generado: {ast_size} nodos principales")
+                self.terminal.add_problem("Sin errores sintácticos\n")
+
+            if self.terminal and hasattr(ast, 'declaraciones'):
+                node_types = {}
+                for node in ast.declaraciones:
+                    node_type = type(node).__name__
+                    node_types[node_type] = node_types.get(node_type, 0) + 1
+
+                self.terminal.add_problem("Estructura del programa:")
+                for node_type, count in sorted(node_types.items()):
+                    self.terminal.add_problem(f"  {node_type}: {count}")
+                self.terminal.add_problem("")
+
+            if self.terminal:
+                self.terminal.add_problem("╔═══════════════════════════════════════════╗")
+                self.terminal.add_problem("║   ANÁLISIS SEMÁNTICO                      ║")
+                self.terminal.add_problem("╚═══════════════════════════════════════════╝")
+
+            valido, errores_semanticos, warnings = analyze_hoop_semantics(ast)
+
+            if warnings:
+                if self.terminal:
+                    self.terminal.add_problem(f"\n{len(warnings)} ADVERTENCIAS:")
+                    for warning in warnings[:10]:
+                        self.terminal.add_problem(f"  {warning}")
+                    if len(warnings) > 10:
+                        self.terminal.add_problem(f"  ... y {len(warnings) - 10} advertencias más")
+
+            if not valido:
+                if self.terminal:
+                    self.terminal.add_problem(f"\n{len(errores_semanticos)} ERRORES SEMÁNTICOS:")
+                    for error in errores_semanticos:
+                        self.terminal.add_problem(f"  {error}")
+                return
+
+            if self.terminal:
+                self.terminal.add_problem("Sin errores semánticos\n")
+
+            if self.terminal:
+                self.terminal.add_problem("═" * 43)
+                self.terminal.add_problem("COMPILACIÓN EXITOSA")
+                self.terminal.add_problem("═" * 43)
+                self.terminal.add_problem(f"  Tokens: {len(tokens)}")
+                self.terminal.add_problem(f"  Nodos AST: {ast_size}")
+                self.terminal.add_problem(f"  Errores: 0")
+                self.terminal.add_problem(f"  Advertencias: {len(warnings)}")
+                self.terminal.add_problem("")
+                self.terminal.add_problem("El código está listo para ejecutarse.")
 
         except Exception as e:
-            error_msg = f"Error en analisis lexico: {str(e)}"
+            import traceback
+            error_msg = f"Error inesperado durante la compilación: {str(e)}"
             if self.terminal:
-                self.terminal.add_problem(f"ERROR: {error_msg}")
+                self.terminal.add_problem(f"\n❌ {error_msg}")
+                self.terminal.add_problem("\nTraceback:")
+                for line in traceback.format_exc().split('\n'):
+                    if line.strip():
+                        self.terminal.add_problem(line)
             print(f"ERROR: {error_msg}")
+            traceback.print_exc()
 
     def run_code(self, event=None):
-        """Ejecuta el analisis completo (lexico + sintactico) del codigo HOOP"""
         code = self.get_code()
         if not code.strip():
-            self.show_message("No hay codigo para ejecutar", "warning")
+            self.show_message("No hay código para ejecutar", "warning")
             return
 
-       
         self._ensure_terminal_visible()
 
         try:
@@ -218,8 +292,9 @@ class ContentArea(tk.Frame):
                 self.terminal.show_tab('output')
 
             if self.terminal:
-                self.terminal.add_output("EJECUTANDO ANALISIS LEXICO...")
-                self.terminal.add_output("=" * 50)
+                self.terminal.add_output("╔═══════════════════════════════════════════╗")
+                self.terminal.add_output("║   FASE 1: ANÁLISIS LÉXICO                ║")
+                self.terminal.add_output("╚═══════════════════════════════════════════╝")
 
             analizador = AnalizadorLexico(code)
             tokens = analizador.analizar()
@@ -230,18 +305,20 @@ class ContentArea(tk.Frame):
             errores_lexicos = analizador.obtener_errores()
             if errores_lexicos:
                 if self.terminal:
-                    self.terminal.add_output("\nERRORES LEXICOS ENCONTRADOS:")
+                    self.terminal.add_output("\nERRORES LÉXICOS ENCONTRADOS:")
                     for error in errores_lexicos:
-                        self.terminal.add_output(f"  - {error}")
-                    self.terminal.add_output("\nNo se puede continuar debido a errores lexicos.")
+                        self.terminal.add_output(f"  {error}")
+                        self.terminal.add_problem(f"LÉXICO: {error}")
+                    self.terminal.show_tab('problems')
                 return
 
             if self.terminal:
-                self.terminal.add_output("Analisis lexico exitoso\n")
+                self.terminal.add_output("Análisis léxico exitoso\n")
 
             if self.terminal:
-                self.terminal.add_output("EJECUTANDO ANALISIS SINTACTICO...")
-                self.terminal.add_output("=" * 50)
+                self.terminal.add_output("╔═══════════════════════════════════════════╗")
+                self.terminal.add_output("║   FASE 2: ANÁLISIS SINTÁCTICO            ║")
+                self.terminal.add_output("╚═══════════════════════════════════════════╝")
 
             ast, errores_sintacticos = parse_tokens(tokens)
 
@@ -251,36 +328,91 @@ class ContentArea(tk.Frame):
 
             if errores_sintacticos:
                 if self.terminal:
-                    self.terminal.add_output("\nERRORES SINTACTICOS ENCONTRADOS:")
+                    self.terminal.add_output("\nERRORES SINTÁCTICOS ENCONTRADOS:")
                     for error in errores_sintacticos:
-                        self.terminal.add_output(f"  - {str(error)}")
-                
+                        self.terminal.add_output(f"  {str(error)}")
+                        self.terminal.add_problem(f"SINTÁCTICO: {str(error)}")
+                    self.terminal.show_tab('problems')
+                return
+
+            if not ast:
                 if self.terminal:
-                    self.terminal.clear_problems()
-                    self.terminal.add_problem("=== ERRORES SINTACTICOS ===")
-                    for error in errores_sintacticos:
-                        self.terminal.add_problem(f"ERROR: {str(error)}")
+                    self.terminal.add_output("\nERROR: No se pudo generar el AST")
+                    self.terminal.add_problem("SINTÁCTICO: No se pudo generar el AST")
+                    self.terminal.show_tab('problems')
                 return
 
             if self.terminal:
-                self.terminal.add_output("Analisis sintactico exitoso\n")
+                self.terminal.add_output("Análisis sintáctico exitoso\n")
 
             if self.terminal:
-                self.terminal.add_output("ESTRUCTURA DEL AST:")
-                self.terminal.add_output("=" * 50)
-                self.show_ast_summary(ast)
+                self.terminal.add_output("╔═══════════════════════════════════════════╗")
+                self.terminal.add_output("║   FASE 3: ANÁLISIS SEMÁNTICO             ║")
+                self.terminal.add_output("╚═══════════════════════════════════════════╝")
 
-            print("Analisis completo exitoso")
+            valido, errores_semanticos, warnings = analyze_hoop_semantics(ast)
+
+            if warnings and self.terminal:
+                self.terminal.add_output(f"{len(warnings)} advertencias semánticas")
+                for warning in warnings[:5]:
+                    self.terminal.add_output(f"  {warning}")
+                    self.terminal.add_problem(f"WARNING: {warning}")
+
+            if not valido:
+                if self.terminal:
+                    self.terminal.add_output("\nERRORES SEMÁNTICOS ENCONTRADOS:")
+                    for error in errores_semanticos:
+                        self.terminal.add_output(f"  {error}")
+                        self.terminal.add_problem(f"SEMÁNTICO: {error}")
+                    self.terminal.show_tab('problems')
+                return
+
+            if self.terminal:
+                self.terminal.add_output("Análisis semántico exitoso\n")
+
+            if self.terminal:
+                self.terminal.add_output("╔═══════════════════════════════════════════╗")
+                self.terminal.add_output("║   FASE 4: EJECUCIÓN DEL PROGRAMA         ║")
+                self.terminal.add_output("╚═══════════════════════════════════════════╝")
+                self.terminal.add_output("")
+
+            success, error_ejecucion, output = interpret_hoop(ast)
+
+            if not success:
+                if self.terminal:
+                    self.terminal.add_output(f"\nERROR DE EJECUCIÓN:")
+                    self.terminal.add_output(f"  {error_ejecucion}")
+                    self.terminal.add_problem(f"EJECUCIÓN: {error_ejecucion}")
+                    self.terminal.show_tab('problems')
+                return
+
+            if output:
+                if self.terminal:
+                    for line in output:
+                        self.terminal.add_output(line)
+            else:
+                if self.terminal:
+                    self.terminal.add_output("(sin salida)")
+
+            if self.terminal:
+                self.terminal.add_output("")
+                self.terminal.add_output("═" * 43)
+                self.terminal.add_output("EJECUCIÓN COMPLETADA EXITOSAMENTE")
+                self.terminal.add_output("═" * 43)
 
         except Exception as e:
-            error_msg = f"Error durante la ejecucion: {str(e)}"
+            import traceback
+            error_msg = f"Error inesperado: {str(e)}"
             if self.terminal:
-                self.terminal.add_output(f"ERROR: {error_msg}")
-                self.terminal.add_problem(f"ERROR: {error_msg}")
+                self.terminal.add_output(f"\n❌ {error_msg}")
+                self.terminal.add_output("\nTraceback:")
+                self.terminal.add_output(traceback.format_exc())
+                self.terminal.add_problem(f"CRÍTICO: {error_msg}")
+                self.terminal.show_tab('problems')
             print(f"ERROR: {error_msg}")
+            traceback.print_exc()
 
     def show_ast_summary(self, ast):
-        """Muestra un resumen del AST en el terminal"""
         if not self.terminal:
             return
 
@@ -335,7 +467,6 @@ class ContentArea(tk.Frame):
             self.terminal.add_output(f"  ... y {ast_size - 5} elementos mas")
 
     def show_message(self, message, msg_type="info"):
-        """Muestra un mensaje en una ventana emergente"""
         if msg_type == "error":
             messagebox.showerror("Error", message)
         elif msg_type == "warning":
@@ -344,7 +475,6 @@ class ContentArea(tk.Frame):
             messagebox.showinfo("Información", message)
 
     def _ensure_terminal_visible(self):
-        """Asegura que el terminal sea visible"""
         try:
             current = self.master
             while current and not hasattr(current, 'terminal_visible'):

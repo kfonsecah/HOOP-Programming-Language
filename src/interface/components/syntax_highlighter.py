@@ -42,7 +42,7 @@ class SyntaxHighlighter:
         self.text.tag_configure("function", foreground=SYNTAX_YELLOW)
         self.text.tag_configure("class", foreground=SYNTAX_YELLOW)
         
-        # Tags para anidación de brackets
+        # Tags para anidacion de brackets
         for i, color in enumerate(self.bracket_colors):
             self.text.tag_configure(f"bracket_{i}", foreground=color)
         self.text.tag_configure("bracket_error", foreground=SYNTAX_RED)
@@ -65,27 +65,27 @@ class SyntaxHighlighter:
             "comment": re.compile(r'#.*'),
             "string": re.compile(r'(\".*?\"|\'.*?\')'),
             "number": re.compile(r'\b\d+(\.\d+)?\b'),
-            "operator": re.compile(r'[\+\-\*\/=%<>&|;]'),  # Operadores simbólicos
+            "operator": re.compile(r'[\+\-\*\/=%<>&|;]'),  # Operadores simbolicos
             "function": re.compile(r'\b\w+(?=\()'),  # Identificadores seguidos de (
-            "class": re.compile(r'(?<=mold\s)\w+')  # Nombres de clase después de 'mold'
+            "class": re.compile(r'(?<=mold\s)\w+')  # Nombres de clase despues de 'mold'
         }
         return patterns
 
     def highlight(self, event=None):
-        """Aplica el resaltado de sintaxis al texto según la semántica de HOOP."""
+        """Aplica el resaltado de sintaxis al texto segun la semantica de HOOP."""
         # Limpiar todos los tags existentes en todo el texto
         for tag in self.text.tag_names():
             if tag != "sel":
                 self.text.tag_remove(tag, '1.0', 'end')
 
-        # Aplicar tags en orden de prioridad (los más específicos primero)
-        # 1. Comentarios (tienen prioridad máxima)
+        # Aplicar tags en orden de prioridad (los mas especificos primero)
+        # 1. Comentarios (tienen prioridad maxima)
         self.apply_tag(self.patterns["comment"], "comment")
         
         # 2. Strings (segunda prioridad)
         self.apply_tag(self.patterns["string"], "string")
         
-        # 3. Números
+        # 3. Numeros
         self.apply_tag(self.patterns["number"], "number")
         
         # 4. Palabras clave de HOOP (mold, when, etc.)
@@ -103,20 +103,20 @@ class SyntaxHighlighter:
         # 8. Valores booleanos (true, false)
         self.apply_tag(self.patterns["boolean"], "boolean")
         
-        # 9. Nombres de clases (después de 'mold')
+        # 9. Nombres de clases (despues de 'mold')
         self.apply_tag(self.patterns["class"], "class")
         
-        # 10. Nombres de funciones (antes de paréntesis)
+        # 10. Nombres de funciones (antes de parentesis)
         self.apply_tag(self.patterns["function"], "function")
         
-        # 11. Operadores simbólicos
+        # 11. Operadores simbolicos
         self.apply_tag(self.patterns["operator"], "operator")
             
         # 12. Aplicar el resaltado de brackets
         self.highlight_brackets()
 
     def highlight_brackets(self):
-        """Resalta los pares de brackets según su nivel de anidación."""
+        """Resalta los pares de brackets segun su nivel de anidacion."""
         text_content = self.text.get('1.0', 'end')
         stack = []
         opening_brackets = "([{"
@@ -144,7 +144,7 @@ class SyntaxHighlighter:
                     self.text.tag_add("bracket_error", start_index, end_index)
 
     def apply_tag(self, pattern, tag):
-        """Encuentra todas las coincidencias de un patrón y aplica un tag."""
+        """Encuentra todas las coincidencias de un patron y aplica un tag."""
         text_content = self.text.get('1.0', 'end')
         for match in pattern.finditer(text_content):
             start, end = match.span()
