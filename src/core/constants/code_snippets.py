@@ -279,7 +279,9 @@ display logicoFalso;
 display texto;
 display valorNulo;
 display estructura;
+display "== Matriz (grid) ==";
 display matrizCompuesta;
+display "== Lista (chain) ==";
 display listaCompuesta;
 """
     },
