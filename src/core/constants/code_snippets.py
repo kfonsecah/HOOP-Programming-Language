@@ -130,126 +130,157 @@ cycle i from 1 to 3 {
     },
     "sintaxis_control": {
         "title": "Sintaxis: Control de Flujo",
-        "code": """# --- Sintaxis de Control de Flujo ---
-
-# Estructura when-otherwise
-when condicion_1 {
-    # Código si condicion_1 es verdadera
-} otherwise {
-    # Código si es falsa
+        "code": """data estado set "inicio";
+when estado equals "inicio" {
+    display estado;
 }
 
-# Bucle cycle
-cycle i from 1 to 10 {
-    # Código a repetir
+data nivel set 4;
+when nivel greater 1 {
+    when nivel less 5 {
+        display "en rango";
+    } otherwise {
+        display "fuera de rango";
+    }
+} otherwise {
+    display "valor invalido";
+}
+
+cycle i from 1 to 3 {
     display i;
 }
 
-# Bucle repeat (while)
-repeat condicion {
-    when condicion equals false {
-        halt;
-    }
-    skip;
-}
-
-# Select con casos
-select opcion {
-    case 1 {
-        display "Uno";
-    }
-    case 2 {
-        display "Dos";
-    }
-    default {
-        display "Otro valor";
-    }
-}
-
-# Manejo de errores
-attempt {
-    throw "Error ejemplo";
-} rescue error {
-    display error;
-} ensure {
-    display "Siempre se ejecuta";
+data contador set 0;
+repeat contador less 2 {
+    display contador;
+    contador set contador plus 1;
 }
 """
     },
 
     "sintaxis_funciones": {
         "title": "Sintaxis: Funciones",
-        "code": """# --- Sintaxis de Funciones ---
-
-# Definición de una función simple
-action mi_funcion() {
-    display "Hola desde una función";
+        "code": """action saludoCompleto(text nombre) {
+    data saludo set "Hola ";
+    saludo set saludo plus nombre;
+    answer saludo;
 }
 
-# Función con variables locales
-action calcular() {
-    data resultado set 5 plus 3;
-    display resultado;
+action registrarVisita() {
+    display "Visita registrada";
 }
+
+data mensaje set saludoCompleto("HOOP");
+display mensaje;
+registrarVisita();
 """
     },
     "sintaxis_operaciones": {
         "title": "Sintaxis: Operaciones",
-        "code": """# --- Sintaxis de Operaciones ---
+        "code": """data suma set 8 plus 2;
+data resta set 8 minus 2;
+data producto set 8 times 2;
+data division set 8 divide 2;
 
-# Operaciones Aritméticas
-data suma set 10 plus 5;
-data resta set 10 minus 5;
-data multiplicacion set 10 times 5;
-data division set 10 divide 5;
+data conjuncion set true and false;
+data disyuncion set true or false;
+data negacion set not false;
 
-# Operaciones de Comparación
-data es_mayor set 10 greater 5;
-data es_menor set 5 less 10;
-data es_igual set 5 equals 5;
+display suma;
+display resta;
+display producto;
+display division;
+display conjuncion;
+display disyuncion;
+display negacion;
 """
     },
+    "entrada_salida_datos": {
+        "title": "Entrada y Salida de Datos",
+        "code": """action pedirDatos() {
+    data nombre set input("Ingresa tu nombre: ");
+    data edad set input("Ingresa tu edad: ");
+    data mensaje set "Hola ";
+    mensaje set mensaje plus nombre;
+    display mensaje;
+    display "Edad: ";
+    display edad;
+}
+
+pedirDatos();
+"""
+    },
+
     "semantica": {
         "title": "Semántica",
-        "code": """# --- Semántica en HOOP ---
+        "code": """action main() {
+    data descripcion set "Programa HOOP";
+    data enEjecucion set true;
+    display descripcion;
 
-# La semántica se refiere al significado del código.
+    when enEjecucion {
+        display "La logica vive dentro de bloques con llaves";
+    } otherwise {
+        display "Programa detenido";
+    }
+}
 
-# Asignación de variables:
-# El nombre 'edad' tiene el significado semántico de
-# representar la edad de una persona.
-data edad set 25;
-
-# Un código es semánticamente correcto si hace lo que
-# el programador intentaba que hiciera.
-display edad;
+main();
 """
     },
     "tipos_de_datos": {
         "title": "Tipos de Datos",
-        "code": """# --- Tipos de Datos en HOOP ---
+        "code": """data entero set 15;
+data decimal set 3.75;
+data caracter set 'A';
+data logicoVerdadero set true;
+data logicoFalso set false;
+data texto set "Cadena";
 
-# Tipo Entero (whole)
-data numero_entero set 42;
-
-# Tipo Decimal (fract)
-data numero_decimal set 3.14;
-
-# Tipo Cadena de Texto (text)
-data saludo set "Hola, mundo!";
-
-# Tipo Booleano (logic)
-data es_verdadero set true;
-data es_falso set false;
-
-# Tipos compuestos declarados en clases
-mold Coleccion {
-    grid matriz;
-    chain lista;
+action sinValor() {
 }
 
-display numero_entero;
-display saludo;
+data valorNulo set sinValor();
+
+mold DatosCompuestos {
+    grid matrizPrincipal;
+    chain listaPrincipal;
+}
+
+data matrizCompuesta set "";
+data listaCompuesta set "";
+
+data estructura set forge DatosCompuestos();
+
+data filas set "";
+cycle fila from 1 to 2 {
+    data linea set "";
+    cycle columna from 1 to 3 {
+        data valor set fila times columna;
+        linea set linea plus convert(valor, "text");
+        when columna less 3 {
+            linea set linea plus " ";
+        }
+    }
+    filas set filas plus linea;
+    when fila less 2 {
+        filas set filas plus "\n";
+    }
+}
+
+matrizCompuesta set filas;
+listaCompuesta set "a,b,c";
+
+display entero;
+display decimal;
+display caracter;
+display logicoVerdadero;
+display logicoFalso;
+display texto;
+display valorNulo;
+display estructura;
+display matrizCompuesta;
+display listaCompuesta;
 """
     },
 

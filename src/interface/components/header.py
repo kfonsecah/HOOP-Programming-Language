@@ -188,6 +188,8 @@ class Header(tk.Frame):
                                   command=lambda: self.insert_snippet("sintaxis_funciones"))
         sintaxis_menu.add_command(label="Operaciones", 
                                   command=lambda: self.insert_snippet("sintaxis_operaciones"))
+        sintaxis_menu.add_command(label="Entrada / Salida", 
+                                  command=lambda: self.insert_snippet("entrada_salida_datos"))
         menu.add_cascade(label="Sintaxis", menu=sintaxis_menu)
 
         # Semantica
