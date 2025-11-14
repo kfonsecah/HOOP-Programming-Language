@@ -1,7 +1,0 @@
-# GUI Dependencies
-Pillow==10.4.0
-
-# SVG Processing (opcional - requiere Cairo instalado en el sistema)
-cairosvg==2.7.1
-
-

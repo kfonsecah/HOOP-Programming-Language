@@ -473,6 +473,12 @@ class AnalizadorLexico:
                 token = self.leer_comentario("#")
                 self.tokens.append(token)
             
+            # Comentarios con '+'
+            elif char == '+':
+                self.avanzar()  # consumir '+'
+                token = self.leer_comentario("+")
+                self.tokens.append(token)
+            
             # Delimitadores
             elif char in DELIMITADORES:
                 token = self.crear_token(TokenType.DELIMITER, char)

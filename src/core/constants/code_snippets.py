@@ -144,8 +144,39 @@ cycle i from 1 to 10 {
     # Código a repetir
     display i;
 }
+
+# Bucle repeat (while)
+repeat condicion {
+    when condicion equals false {
+        halt;
+    }
+    skip;
+}
+
+# Select con casos
+select opcion {
+    case 1 {
+        display "Uno";
+    }
+    case 2 {
+        display "Dos";
+    }
+    default {
+        display "Otro valor";
+    }
+}
+
+# Manejo de errores
+attempt {
+    throw "Error ejemplo";
+} rescue error {
+    display error;
+} ensure {
+    display "Siempre se ejecuta";
+}
 """
     },
+
     "sintaxis_funciones": {
         "title": "Sintaxis: Funciones",
         "code": """# --- Sintaxis de Funciones ---
@@ -211,10 +242,18 @@ data saludo set "Hola, mundo!";
 data es_verdadero set true;
 data es_falso set false;
 
+# Tipos compuestos declarados en clases
+mold Coleccion {
+    grid matriz;
+    chain lista;
+}
+
 display numero_entero;
 display saludo;
 """
     },
+
+
     "test_basico": {
         "title": "Test Básico - Declaraciones Simples",
         "code": """# Test básico de declaraciones

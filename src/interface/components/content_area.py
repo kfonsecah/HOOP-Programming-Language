@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'core'))
 from core.lexer import AnalizadorLexico
 from core.parser_oficial import parse_tokens
 from core.semantic import analyze_hoop_semantics
-from core.interpreter import interpret_hoop
+from core.interpreter import interpret_hoop, register_input_handler
 
 class ContentArea(tk.Frame):
     def __init__(self, master, **kwargs):
@@ -94,6 +94,9 @@ class ContentArea(tk.Frame):
         self.text_area.bind('<Button-4>', self.on_scroll)
         self.text_area.bind('<Button-5>', self.on_scroll)
         self.text_area.bind('<Configure>', self.on_scroll)
+
+        # Registrar manejador personalizado para input() dentro de la GUI
+        register_input_handler(self._gui_input_handler)
 
     def set_terminal(self, terminal):
         self.terminal = terminal
@@ -178,6 +181,10 @@ class ContentArea(tk.Frame):
                     self.terminal.add_problem("\nERRORES LÉXICOS:")
                     for error in errores_lexicos:
                         self.terminal.add_problem(f"  {error}")
+                self.show_message(
+                    "Se encontraron errores léxicos:\n" + "\n".join(errores_lexicos),
+                    "error"
+                )
                 return
             else:
                 if self.terminal:
@@ -206,11 +213,16 @@ class ContentArea(tk.Frame):
                     self.terminal.add_problem("\nERRORES SINTÁCTICOS:")
                     for error in errores_sintacticos:
                         self.terminal.add_problem(f"  {str(error)}")
+                self.show_message(
+                    "Se encontraron errores sintácticos:\n" + "\n".join(map(str, errores_sintacticos)),
+                    "error"
+                )
                 return
 
             if not ast:
                 if self.terminal:
                     self.terminal.add_problem("\nERROR: No se pudo generar el AST")
+                self.show_message("No se pudo generar el AST. Revise su código.", "error")
                 return
 
             if self.terminal:
@@ -249,6 +261,10 @@ class ContentArea(tk.Frame):
                     self.terminal.add_problem(f"\n{len(errores_semanticos)} ERRORES SEMÁNTICOS:")
                     for error in errores_semanticos:
                         self.terminal.add_problem(f"  {error}")
+                self.show_message(
+                    "Se encontraron errores semánticos:\n" + "\n".join(errores_semanticos),
+                    "error"
+                )
                 return
 
             if self.terminal:
@@ -310,6 +326,10 @@ class ContentArea(tk.Frame):
                         self.terminal.add_output(f"  {error}")
                         self.terminal.add_problem(f"LÉXICO: {error}")
                     self.terminal.show_tab('problems')
+                self.show_message(
+                    "Se encontraron errores léxicos:\n" + "\n".join(errores_lexicos),
+                    "error"
+                )
                 return
 
             if self.terminal:
@@ -333,6 +353,10 @@ class ContentArea(tk.Frame):
                         self.terminal.add_output(f"  {str(error)}")
                         self.terminal.add_problem(f"SINTÁCTICO: {str(error)}")
                     self.terminal.show_tab('problems')
+                self.show_message(
+                    "Se encontraron errores sintácticos:\n" + "\n".join(map(str, errores_sintacticos)),
+                    "error"
+                )
                 return
 
             if not ast:
@@ -340,6 +364,7 @@ class ContentArea(tk.Frame):
                     self.terminal.add_output("\nERROR: No se pudo generar el AST")
                     self.terminal.add_problem("SINTÁCTICO: No se pudo generar el AST")
                     self.terminal.show_tab('problems')
+                self.show_message("No se pudo generar el AST. Revise su código.", "error")
                 return
 
             if self.terminal:
@@ -365,6 +390,10 @@ class ContentArea(tk.Frame):
                         self.terminal.add_output(f"  {error}")
                         self.terminal.add_problem(f"SEMÁNTICO: {error}")
                     self.terminal.show_tab('problems')
+                self.show_message(
+                    "Se encontraron errores semánticos:\n" + "\n".join(errores_semanticos),
+                    "error"
+                )
                 return
 
             if self.terminal:
@@ -384,6 +413,8 @@ class ContentArea(tk.Frame):
                     self.terminal.add_output(f"  {error_ejecucion}")
                     self.terminal.add_problem(f"EJECUCIÓN: {error_ejecucion}")
                     self.terminal.show_tab('problems')
+                if error_ejecucion:
+                    self.show_message(f"Error en la ejecución:\n{error_ejecucion}", "error")
                 return
 
             if output:
@@ -484,3 +515,14 @@ class ContentArea(tk.Frame):
                 current.toggle_terminal()
         except Exception as e:
             print(f"No se pudo mostrar el terminal automaticamente: {e}")
+
+    def _gui_input_handler(self, prompt: str) -> str:
+        """Solicita datos al usuario mediante un diálogo cuando se usa input() desde la GUI."""
+        try:
+            self.master.show_content_area()
+        except Exception:
+            pass
+        self._ensure_terminal_visible()
+        mensaje = prompt if prompt else "Ingrese un valor:"
+        respuesta = simpledialog.askstring("Entrada HOOP", mensaje, parent=self)
+        return respuesta if respuesta is not None else ""

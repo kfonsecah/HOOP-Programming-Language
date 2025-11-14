@@ -25,6 +25,15 @@ class DeclaracionNode(ASTNode):
     def __repr__(self):
         return f"Declaracion({self.nombre} = {self.valor})"
 
+class ConstanteNode(ASTNode):
+    """<constante> ::= "fixed" <IDENTIFIER> "set" <expresion> ";" """
+    def __init__(self, nombre, valor):
+        self.nombre = nombre
+        self.valor = valor
+    
+    def __repr__(self):
+        return f"Constante({self.nombre} = {self.valor})"
+
 class FuncionNode(ASTNode):
     """<funcion> ::= "action" <IDENTIFIER> "(" <parametros>? ")" "{" <statements> "}" """
     def __init__(self, nombre, parametros, cuerpo):
@@ -83,6 +92,15 @@ class CycleStatementNode(ASTNode):
     
     def __repr__(self):
         return f"Cycle({self.variable}, {self.inicio} to {self.fin})"
+
+class RepeatStatementNode(ASTNode):
+    """Nodo para bucles tipo while: repeat <condicion> { <statements> }"""
+    def __init__(self, condicion, cuerpo):
+        self.condicion = condicion
+        self.cuerpo = cuerpo
+    
+    def __repr__(self):
+        return f"Repeat({self.condicion})"
 
 class OperacionNode(ASTNode):
     """Nodo para operaciones binarias
@@ -230,6 +248,54 @@ class LlamadaMetodoNode(ASTNode):
 
 DisplayStatementNode = DisplayNode
 ReturnStatementNode = ReturnNode
+
+class SelectCaseNode(ASTNode):
+    """Caso dentro de select"""
+    def __init__(self, valor, cuerpo):
+        self.valor = valor
+        self.cuerpo = cuerpo if cuerpo else []
+    
+    def __repr__(self):
+        return f"Case({self.valor})"
+
+class SelectStatementNode(ASTNode):
+    """Sentencia select/case"""
+    def __init__(self, expresion, casos, default):
+        self.expresion = expresion
+        self.casos = casos if casos else []
+        self.default = default if default else []
+    
+    def __repr__(self):
+        return f"Select({len(self.casos)} casos)"
+
+class TryStatementNode(ASTNode):
+    """Bloque attempt/rescue/ensure"""
+    def __init__(self, bloque_try, rescue_identificador, bloque_rescue, bloque_ensure):
+        self.bloque_try = bloque_try if bloque_try else []
+        self.rescue_identificador = rescue_identificador
+        self.bloque_rescue = bloque_rescue if bloque_rescue else []
+        self.bloque_ensure = bloque_ensure if bloque_ensure else []
+    
+    def __repr__(self):
+        return "TryStatement()"
+
+class ThrowNode(ASTNode):
+    """throw expresion;"""
+    def __init__(self, expresion):
+        self.expresion = expresion
+    
+    def __repr__(self):
+        return f"Throw({self.expresion})"
+
+class BreakNode(ASTNode):
+    """halt;"""
+    def __repr__(self):
+        return "Break()"
+
+class ContinueNode(ASTNode):
+    """skip;"""
+    def __repr__(self):
+        return "Continue()"
 
 class ParseError(Exception):
     def __init__(self, mensaje, token=None):

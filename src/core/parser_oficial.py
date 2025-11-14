@@ -9,10 +9,11 @@ que convierte una secuencia de tokens en un Arbol de Sintaxis Abstracta (AST).
 
 from core.lexer import TokenType
 from core.ast_nodes import (
-    ASTNode, ProgramaNode, DeclaracionNode, FuncionNode, ParametroNode,
-    ClaseNode, IfStatementNode, CycleStatementNode, OperacionNode,
+    ASTNode, ProgramaNode, DeclaracionNode, ConstanteNode, FuncionNode, ParametroNode,
+    ClaseNode, IfStatementNode, CycleStatementNode, RepeatStatementNode, OperacionNode,
     LiteralNode, IdentificadorNode, LlamadaFuncionNode, AttributeAccessNode,
-    AssignmentNode, ReturnNode, DisplayNode
+    AssignmentNode, ReturnNode, DisplayNode, SelectStatementNode, SelectCaseNode,
+    TryStatementNode, ThrowNode, BreakNode, ContinueNode
 )
 
 class ParseError(Exception):
@@ -127,9 +128,11 @@ class ParserOficial:
             self.skip_newlines()
             if not self.current_token or self.current_token.tipo == TokenType.EOF:
                 break
-                
+            
             if self.match(TokenType.KEYWORD, "data"):
                 declaraciones.append(self.parse_declaracion())
+            elif self.match(TokenType.KEYWORD, "fixed"):
+                declaraciones.append(self.parse_constante())
             elif self.match(TokenType.KEYWORD, "mold"):
                 declaraciones.append(self.parse_clase())
             elif self.match(TokenType.KEYWORD, "action"):
@@ -149,6 +152,15 @@ class ParserOficial:
         valor = self.parse_expresion()
         self.expect(TokenType.DELIMITER, ";")
         return DeclaracionNode(nombre, valor)
+    
+    def parse_constante(self):
+        """<constante> ::= "fixed" <IDENTIFIER> "set" <expresion> ";" """
+        self.expect(TokenType.KEYWORD, "fixed")
+        nombre = self.expect(TokenType.IDENTIFIER).valor
+        self.expect(TokenType.WORD_OPERATOR, "set")
+        valor = self.parse_expresion()
+        self.expect(TokenType.DELIMITER, ";")
+        return ConstanteNode(nombre, valor)
     
     def parse_funcion(self):
         """<funcion> ::= "action" <IDENTIFIER> "(" <parametros>? ")" "{" <statements> "}" """
@@ -251,12 +263,30 @@ class ParserOficial:
             return self.parse_if_statement()
         elif self.match(TokenType.KEYWORD, "cycle"):
             return self.parse_cycle_statement()
+        elif self.match(TokenType.KEYWORD, "repeat"):
+            return self.parse_repeat_statement()
         elif self.match(TokenType.KEYWORD, "data"):
             return self.parse_declaracion()
+        elif self.match(TokenType.KEYWORD, "fixed"):
+            return self.parse_constante()
         elif self.match(TokenType.KEYWORD, "answer"):
             return self.parse_return_statement()
         elif self.match(TokenType.KEYWORD, "display"):
             return self.parse_display_statement()
+        elif self.match(TokenType.KEYWORD, "select"):
+            return self.parse_select_statement()
+        elif self.match(TokenType.KEYWORD, "attempt"):
+            return self.parse_try_statement()
+        elif self.match(TokenType.KEYWORD, "throw"):
+            return self.parse_throw_statement()
+        elif self.match(TokenType.KEYWORD, "skip"):
+            self.expect(TokenType.KEYWORD, "skip")
+            self.expect(TokenType.DELIMITER, ";")
+            return ContinueNode()
+        elif self.match(TokenType.KEYWORD, "halt"):
+            self.expect(TokenType.KEYWORD, "halt")
+            self.expect(TokenType.DELIMITER, ";")
+            return BreakNode()
         else:
             return self.parse_simple_statement()
     
@@ -332,6 +362,19 @@ class ParserOficial:
         
         return CycleStatementNode(variable, inicio, fin, cuerpo)
     
+    def parse_repeat_statement(self):
+        """repeat <condicion> { <statements> }"""
+        self.check_nesting_depth("repeat")
+        self.expect(TokenType.KEYWORD, "repeat")
+        condicion = self.parse_expresion()
+        self.expect(TokenType.DELIMITER, "{")
+        self.skip_newlines()
+        self.nesting_depth += 1
+        cuerpo = self.parse_statements()
+        self.nesting_depth -= 1
+        self.expect(TokenType.DELIMITER, "}")
+        return RepeatStatementNode(condicion, cuerpo)
+    
     def parse_return_statement(self):
         """return statement: answer <expresion>;"""
         self.expect(TokenType.KEYWORD, "answer")
@@ -345,6 +388,76 @@ class ParserOficial:
         expresion = self.parse_expresion()
         self.expect(TokenType.DELIMITER, ";")
         return DisplayNode(expresion)
+    
+    def parse_select_statement(self):
+        """select <expresion> { case ... default ... }"""
+        self.expect(TokenType.KEYWORD, "select")
+        expresion = self.parse_expresion()
+        self.expect(TokenType.DELIMITER, "{")
+        self.skip_newlines()
+        
+        casos = []
+        default_block = []
+        
+        while self.current_token and not self.match(TokenType.DELIMITER, "}"):
+            if self.match(TokenType.KEYWORD, "case"):
+                self.advance()
+                valor = self.parse_expresion()
+                self.expect(TokenType.DELIMITER, "{")
+                self.skip_newlines()
+                cuerpo = self.parse_statements()
+                self.expect(TokenType.DELIMITER, "}")
+                casos.append(SelectCaseNode(valor, cuerpo))
+            elif self.match(TokenType.KEYWORD, "default"):
+                self.advance()
+                self.expect(TokenType.DELIMITER, "{")
+                self.skip_newlines()
+                default_block = self.parse_statements()
+                self.expect(TokenType.DELIMITER, "}")
+            else:
+                self.error(f"Elemento invalido en select: {self.current_token.valor}")
+            self.skip_newlines()
+        
+        self.expect(TokenType.DELIMITER, "}")
+        return SelectStatementNode(expresion, casos, default_block)
+    
+    def parse_try_statement(self):
+        """attempt { ... } [rescue IDENT? { ... }] [ensure { ... }]"""
+        self.expect(TokenType.KEYWORD, "attempt")
+        self.expect(TokenType.DELIMITER, "{")
+        self.skip_newlines()
+        try_block = self.parse_statements()
+        self.expect(TokenType.DELIMITER, "}")
+        
+        rescue_ident = None
+        rescue_block = []
+        ensure_block = []
+        
+        if self.match(TokenType.KEYWORD, "rescue"):
+            self.advance()
+            if self.match(TokenType.IDENTIFIER):
+                rescue_ident = self.current_token.valor
+                self.advance()
+            self.expect(TokenType.DELIMITER, "{")
+            self.skip_newlines()
+            rescue_block = self.parse_statements()
+            self.expect(TokenType.DELIMITER, "}")
+        
+        if self.match(TokenType.KEYWORD, "ensure"):
+            self.advance()
+            self.expect(TokenType.DELIMITER, "{")
+            self.skip_newlines()
+            ensure_block = self.parse_statements()
+            self.expect(TokenType.DELIMITER, "}")
+        
+        return TryStatementNode(try_block, rescue_ident, rescue_block, ensure_block)
+    
+    def parse_throw_statement(self):
+        """throw <expresion>;"""
+        self.expect(TokenType.KEYWORD, "throw")
+        expresion = self.parse_expresion()
+        self.expect(TokenType.DELIMITER, ";")
+        return ThrowNode(expresion)
     
     def parse_simple_statement(self):
         """Parsea statements simples (asignaciones, llamadas a funcion, expresiones)
@@ -628,16 +741,6 @@ def parse_hoop_oficial(tokens):
     return parser.parse()
 
 def parse_tokens(tokens):
-    """Funcion de compatibilidad con la interfaz GUI existente
-    
-    Args:
-        tokens: Lista de tokens del analizador lexico
-        
-    Returns:
-        Tupla (ast, errores) donde:
-        - ast: Arbol de sintaxis abstracta o None si hay errores
-        - errores: Lista de mensajes de error (vacia si no hay errores)
-    """
     try:
         parser = ParserOficial(tokens)
         ast = parser.parse()

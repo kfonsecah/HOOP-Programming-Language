@@ -85,17 +85,17 @@ display "   OPERACIONES COMPLEJAS";
 display "====================================";
 display "";
 
-// Calcular (5 + 3) * (10 - 2)
+// Calcular (5 - 2) * (10 - 2)
 data a set 5;
-data b set 3;
+data b set 2;
 data c set 10;
 data d set 2;
 
-data suma1 set sumar(a, b);
+data resta_inicial set restar(a, b);
 data resta1 set restar(c, d);
-data resultado_complejo set multiplicar(suma1, resta1);
+data resultado_complejo set multiplicar(resta_inicial, resta1);
 
-display "Calculo: (5 + 3) * (10 - 2) = ";
+display "Calculo: (5 - 2) * (10 - 2) = ";
 display resultado_complejo;
 display "";
 
