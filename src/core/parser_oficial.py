@@ -18,10 +18,6 @@ from core.ast_nodes import (
 
 class ParseError(Exception):
     """Excepcion para errores de parsing con informacion de contexto
-    
-    Atributos:
-        mensaje: Descripcion del error
-        token: Token donde ocurrio el error (contiene linea y columna)
     """
     def __init__(self, mensaje, token=None):
         self.mensaje = mensaje
@@ -213,12 +209,7 @@ class ParserOficial:
         
         Gramatica: <clase_cuerpo> ::= (<atributo> | <metodo>)*
         
-        Los atributos pueden ser:
-        - Declaraciones con data: data nombre set valor;
-        - Declaraciones con tipo: tipo nombre;
-        
-        Returns:
-            Lista de elementos (declaraciones y metodos)
+
         """
         elementos = []
         while self.current_token and not self.match(TokenType.DELIMITER, "}"):
@@ -318,7 +309,6 @@ class ParserOficial:
             self.expect(TokenType.DELIMITER, "{")
             self.skip_newlines()
             
-            # Incrementar profundidad para el bloque else
             self.nesting_depth += 1
             bloque_else = self.parse_statements()
             self.nesting_depth -= 1
@@ -463,16 +453,7 @@ class ParserOficial:
         """Parsea statements simples (asignaciones, llamadas a funcion, expresiones)
         
         Gramatica: <simple_statement> ::= <asignacion> | <llamada> | <expresion> ";"
-        
-        Maneja:
-        - Asignaciones: variable set valor;
-        - Asignaciones a miembros: self.atributo set valor; o objeto.atributo set valor;
-        - Llamadas a funcion: funcion();
-        - Llamadas a metodo: objeto.metodo();
-        - Expresiones seguidas de punto y coma
-        
-        Returns:
-            Nodo AST del statement
+
         """
         # Verificar si es una asignacion o llamada/expresion
         if (self.match(TokenType.IDENTIFIER) or 
@@ -643,8 +624,6 @@ class ParserOficial:
                               <IDENTIFIER> "." <IDENTIFIER> |
                               "(" <expresion> ")"
         
-        Returns:
-            Nodo AST correspondiente al tipo de expresion primaria
         """
         # Literales de texto
         if self.match(TokenType.STRING):
@@ -726,17 +705,6 @@ class ParserOficial:
             self.error(f"Expresión inválida: {self.current_token.valor if self.current_token else 'EOF'}")
 
 def parse_hoop_oficial(tokens):
-    """Funcion principal para parsing de codigo HOOP
-    
-    Args:
-        tokens: Lista de tokens del analizador lexico
-        
-    Returns:
-        AST del programa
-        
-    Raises:
-        ParseError: Si hay errores de sintaxis
-    """
     parser = ParserOficial(tokens)
     return parser.parse()
 

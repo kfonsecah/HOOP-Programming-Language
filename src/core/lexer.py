@@ -9,10 +9,7 @@ from enum import Enum
 RESERVADAS = {
     # === (POO BASICO) ===
     "mold",     # class
-    # "bond",     # interface - NO USADO EN POO BASICO
-    # "listing",  # enum - FUTURO
-    # "layout",   # struct - FUTURO
-    # "unit",     # package - FUTURO
+
     
     # === CONTROL DE FLUJO ===
     "when",     # if
@@ -282,12 +279,6 @@ class AnalizadorLexico:
     
     def leer_cadena(self, delimitador):
         """Lee cadenas de texto o caracteres individuales
-        
-        Args:
-            delimitador: Comilla que delimita la cadena (' o ")
-        
-        Returns:
-            Token de tipo STRING o CHARACTER segun corresponda
         """
         linea_inicio = self.linea_actual
         columna_inicio = self.columna_actual
@@ -297,7 +288,7 @@ class AnalizadorLexico:
         while (self.obtener_caracter_actual() and 
                self.obtener_caracter_actual() != delimitador):
             
-            # Manejo de caracteres de escape
+            # manejo de caracteres de escape
             if self.obtener_caracter_actual() == '\\':
                 self.avanzar()
                 if self.obtener_caracter_actual():
@@ -319,14 +310,14 @@ class AnalizadorLexico:
                 valor += self.obtener_caracter_actual()
                 self.avanzar()
         
-        # Verificar cierre de cadena
+        # verificar cierre de cadena
         if self.obtener_caracter_actual() == delimitador:
             self.avanzar()  # saltar comilla final
         else:
             self.errores.append(f"Cadena sin cerrar en linea {linea_inicio}:{columna_inicio}")
             return Token(TokenType.ERROR, valor, linea_inicio, columna_inicio, self.posicion)
         
-        # Determinar si es un caracter individual (solo con comillas simples y un caracter)
+        # Determinarrr si es un caracter individual
         if delimitador == "'" and len(valor) == 1:
             return Token(TokenType.CHARACTER, valor, linea_inicio, columna_inicio, self.posicion)
         
@@ -349,14 +340,14 @@ class AnalizadorLexico:
             valor += self.obtener_caracter_actual()
             self.avanzar()
         
-        # Clasificar segun las tablas definidas (orden optimizado por frecuencia de uso)
-        # Primero verificar booleanos (mas rapido, solo 2 valores)
+        
+        # Primero verificar booleanos 
         if valor in ['true', 'false']:
             tipo = TokenType.BOOLEAN
-        # Luego operadores en palabras (muy comunes: set, plus, equals, etc.)
+        # Luego operadores en palabras 
         elif valor in OPERADORES_PALABRAS:
             tipo = TokenType.WORD_OPERATOR
-        # Palabras reservadas (estructuras de control, etc.)
+        # Palabras reservadas 
         elif valor in RESERVADAS:
             tipo = TokenType.KEYWORD
         # Tipos de datos
@@ -365,7 +356,7 @@ class AnalizadorLexico:
         # Funciones built-in
         elif valor in PALABRAS_PREGONADAS:
             tipo = TokenType.BUILTIN
-        # Si no coincide con ninguna categoria, es un identificador
+        # Si no coincide ninguno, IDENTIFIER ENTONCES
         else:
             tipo = TokenType.IDENTIFIER
         
@@ -428,11 +419,7 @@ class AnalizadorLexico:
         """
         FUNCION PRINCIPAL DEL ANALIZADOR LEXICO
         
-        Lee renglones sucesivos del programa de entrada,
-        los descompone en elementos lexicos individuales,
-        y retorna la secuencia de tokens.
-        
-        Esta es la fase de traduccion que mas tiempo requiere.
+        Saca las secuenciaaaa dde tokens del codigo
         """
         while self.posicion < len(self.codigo):
             # Omitir espacios en blanco
