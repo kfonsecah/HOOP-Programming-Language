@@ -1,214 +1,214 @@
 # HOOP — Human Object Oriented Programming
 
-HOOP es un lenguaje de programación orientado a objetos diseñado e implementado desde cero en Python. Su sintaxis está basada en palabras en inglés en lugar de símbolos matemáticos tradicionales, haciendo el código más explícito y legible. El proyecto incluye un intérprete completo en cuatro fases y un IDE de escritorio construido con Tkinter.
+HOOP is an object-oriented programming language designed and implemented from scratch in Python. Its syntax is built around English words instead of traditional mathematical symbols, making code more explicit and readable. The project includes a full four-phase interpreter and a desktop IDE built with Tkinter.
 
 ---
 
-## ¿Por qué HOOP?
+## Why HOOP?
 
-La mayoría de los lenguajes usan símbolos como `+`, `-`, `==` que resultan abstractos para quienes están aprendiendo a programar. HOOP reemplaza esos símbolos por palabras: `plus`, `minus`, `equals`. El resultado es código que se lee casi como prosa en inglés, lo que hace la estructura lógica más transparente.
+Most languages use symbols like `+`, `-`, `==` that feel abstract, especially for people just getting into programming. HOOP replaces those symbols with words: `plus`, `minus`, `equals`. The result is code that reads almost like natural English, making the logical structure more transparent.
 
 ```
-data precio set 150;
-data descuento set 30;
-data total set precio minus descuento;
+data price set 150;
+data discount set 30;
+data total set price minus discount;
 
 when total greater 100 {
-    display "Precio con descuento aplicado";
+    display "Discounted price applied";
 }
 ```
 
 ---
 
-## Arquitectura del intérprete
+## Interpreter Architecture
 
-El intérprete sigue una pipeline clásica de cuatro fases secuenciales. Cada fase consume la salida de la anterior y tiene una responsabilidad bien definida.
+The interpreter follows a classic four-phase sequential pipeline. Each phase consumes the output of the previous one and has a single, well-defined responsibility.
 
 ```
-Código fuente (.hoop)
+Source code (.hoop)
         ↓
-┌─────────────────────┐
-│  1. Análisis Léxico │  lexer.py → lista de Tokens
-└─────────────────────┘
+┌──────────────────────┐
+│  1. Lexical Analysis │  lexer.py → Token list
+└──────────────────────┘
+        ↓
+┌───────────────────────────┐
+│  2. Syntactic Analysis    │  parser_oficial.py → AST
+└───────────────────────────┘
         ↓
 ┌──────────────────────────┐
-│  2. Análisis Sintáctico  │  parser_oficial.py → AST
+│  3. Semantic Analysis    │  semantic.py → symbol table + validation
 └──────────────────────────┘
         ↓
-┌─────────────────────────┐
-│  3. Análisis Semántico  │  semantic.py → validación + tabla de símbolos
-└─────────────────────────┘
-        ↓
-┌──────────────────┐
-│  4. Ejecución    │  interpreter.py → output del programa
-└──────────────────┘
+┌─────────────────┐
+│  4. Execution   │  interpreter.py → program output
+└─────────────────┘
 ```
 
 ---
 
-## Fase 1 — Análisis léxico (`lexer.py`)
+## Phase 1 — Lexical Analysis (`lexer.py`)
 
-La clase `AnalizadorLexico` recorre el código carácter por carácter y produce una lista de `Token`. Cada token tiene un tipo, un valor y su posición exacta en el archivo (línea y columna), lo que permite generar mensajes de error precisos en fases posteriores.
+The `AnalizadorLexico` class walks through the source code character by character and produces a list of `Token` objects. Each token carries its type, its value, and its exact position in the file (line and column), which is what makes error messages in later phases actually useful.
 
-El lexer distingue entre cinco categorías principales de palabras: palabras reservadas del lenguaje (`mold`, `when`, `cycle`...), tipos de datos (`whole`, `fract`, `text`...), operadores en palabras (`set`, `plus`, `equals`...), funciones built-in (`display`, `length`, `input`...) y valores booleanos (`true`, `false`). Todo lo que no caiga en ninguna de esas categorías se clasifica como `IDENTIFIER`.
+The lexer distinguishes five main categories of words: language keywords (`mold`, `when`, `cycle`...), data types (`whole`, `fract`, `text`...), word operators (`set`, `plus`, `equals`...), built-in functions (`display`, `length`, `input`...), and boolean literals (`true`, `false`). Anything that doesn't fall into one of those categories becomes an `IDENTIFIER`.
 
-Algunos detalles de la implementación:
+A few implementation details worth noting:
 
-- Los números se procesan buscando el punto decimal — si el siguiente carácter después del punto es un dígito, se lee como `fract`, si no, se trata como dos tokens separados.
-- Las cadenas soportan secuencias de escape (`\n`, `\t`, `\\`) y reportan error si no se cierra la comilla.
-- Los comentarios se inician con `#` o `//` y consumen el resto de la línea.
-- Los caracteres individuales con comillas simples (`'A'`) se tokenean como `CHARACTER`.
+- Numbers are processed by peeking at the character after a dot — if it's a digit, the token is read as a `fract`; otherwise the dot is treated as a separate delimiter token.
+- Strings support escape sequences (`\n`, `\t`, `\\`) and report an error if the closing quote is never found.
+- Comments start with `#` or `//` and consume the rest of the line.
+- Single-character literals with single quotes (`'A'`) are tokenized as `CHARACTER`.
 
 ---
 
-## Fase 2 — Análisis sintáctico (`parser_oficial.py`)
+## Phase 2 — Syntactic Analysis (`parser_oficial.py`)
 
-La clase `ParserOficial` implementa un parser recursivo descendente. Cada regla gramatical es una función de Python que llama a otras funciones recursivamente siguiendo la estructura del lenguaje.
+`ParserOficial` implements a recursive descent parser. Each grammar rule is a Python function that calls other functions recursively, mirroring the structure of the language.
 
-La precedencia de operadores está codificada en la jerarquía de funciones:
+Operator precedence is baked into the call hierarchy:
 
 ```
 parse_expresion
-  └── parse_operacion_logica          (and, or)
-        └── parse_operacion_comparacion  (equals, greater, less...)
-              └── parse_operacion_aritmetica   (plus, minus)
+  └── parse_operacion_logica           (and, or)
+        └── parse_operacion_comparacion   (equals, greater, less...)
+              └── parse_operacion_aritmetica    (plus, minus)
                     └── parse_operacion_multiplicativa  (times, divide, mod)
-                          └── parse_operacion_unaria    (not, - unario)
-                                └── parse_primary       (literales, identificadores, llamadas)
+                          └── parse_operacion_unaria    (not, unary minus)
+                                └── parse_primary       (literals, identifiers, calls)
 ```
 
-Esto garantiza que `5 plus 3 times 2` se evalúe como `5 + (3 * 2)` y no como `(5 + 3) * 2`.
+This ensures that `5 plus 3 times 2` evaluates as `5 + (3 * 2)` rather than `(5 + 3) * 2`.
 
-El resultado es un Árbol de Sintaxis Abstracta (AST) compuesto por los nodos definidos en `ast_nodes.py`. Hay nodos para cada construcción del lenguaje: `DeclaracionNode`, `FuncionNode`, `ClaseNode`, `IfStatementNode`, `CycleStatementNode`, `ForgeNode`, etc.
+The output is an Abstract Syntax Tree (AST) made up of the node types defined in `ast_nodes.py`. There's a node for every language construct: `DeclaracionNode`, `FuncionNode`, `ClaseNode`, `IfStatementNode`, `CycleStatementNode`, `ForgeNode`, and so on.
 
-Una restricción de diseño importante: el parser limita el anidamiento de estructuras de control a **3 niveles**. Si se intenta un cuarto nivel de `when` o `cycle` anidado, el parser lanza un error antes de continuar. Esto se controla con la variable `nesting_depth` que se incrementa y decrementa al entrar y salir de cada bloque.
-
----
-
-## Fase 3 — Análisis semántico (`semantic.py`)
-
-El `SemanticAnalyzer` recorre el AST usando el patrón visitor y valida que el programa tenga sentido lógico. La herramienta central es la tabla de símbolos, implementada como una cadena de objetos `Scope` anidados.
-
-Cada scope tiene acceso al scope padre, lo que permite que las variables de un contexto exterior sean visibles desde un contexto interior pero no al revés. Cuando se busca un símbolo, se recorre la cadena de scopes hacia arriba hasta encontrarlo o llegar al global.
-
-Las validaciones más importantes que realiza:
-
-- Variables y funciones declaradas antes de usarse
-- Constantes (`fixed`) que no se reasignan
-- `answer` solo dentro de funciones
-- `self` solo dentro de métodos de clase
-- `halt` y `skip` solo dentro de ciclos
-- Número de argumentos al llamar funciones
-- Compatibilidad de tipos en operaciones aritméticas (emite warnings, no errores duros, porque HOOP es dinámicamente tipado)
-
-El analizador también registra todas las funciones built-in en el scope global al inicializarse (`_define_builtins`), incluyendo sus tipos de retorno esperados y si son variádicas, para que las llamadas a `display`, `length`, `input`, etc. pasen la validación sin tratarse como funciones indefinidas.
+One intentional design constraint: the parser enforces a **maximum nesting depth of 3 levels** for control structures. Trying to add a fourth level of nested `when` or `cycle` raises an error before the parser continues. This is tracked via a `nesting_depth` counter that increments when entering a block and decrements when leaving it.
 
 ---
 
-## Fase 4 — Ejecución (`interpreter.py`)
+## Phase 3 — Semantic Analysis (`semantic.py`)
 
-El `HoopInterpreter` es también un visitor del AST. La ejecución es directa: cada nodo sabe cómo ejecutarse a sí mismo cuando el intérprete lo visita.
+The `SemanticAnalyzer` walks the AST using the visitor pattern and validates that the program makes logical sense. The core data structure is the symbol table, implemented as a chain of nested `Scope` objects.
 
-El estado del programa vive en una cadena de `ExecutionContext`, análoga a los scopes del analizador semántico pero con los valores reales en lugar de solo metadatos. Cuando se llama una función, se crea un nuevo contexto hijo del contexto global (no del contexto actual, lo que previene capturas accidentales de variables locales). Cuando la función termina, el contexto se descarta.
+Each scope holds a reference to its parent, which allows variables from outer contexts to be visible inside inner ones but not the other way around. Symbol lookups walk up the chain until they find the name or reach the global scope.
 
-Las funciones retornan valores usando el mecanismo de excepciones de Python: cuando el intérprete encuentra un nodo `ReturnNode` (la instrucción `answer`), lanza una `ReturnException` que sube por la pila hasta que el bloque de llamada a función la captura y extrae el valor. Lo mismo aplica para `LoopBreak` (instrucción `halt`) y `LoopContinue` (instrucción `skip`).
+Key validations performed:
 
-Los objetos se representan con la clase `HoopObject`, que internamente es un diccionario de atributos con el nombre de la clase. Cuando se ejecuta `forge Clase(args)`, el intérprete crea una instancia, inicializa sus atributos con los valores por defecto declarados en la clase, y luego busca y ejecuta el método constructor. `self` se implementa como una variable especial `current_instance` que el intérprete mantiene durante la ejecución de métodos.
+- Variables and functions must be declared before use
+- Constants (`fixed`) cannot be reassigned
+- `answer` (return) is only valid inside functions
+- `self` is only valid inside class methods
+- `halt` and `skip` are only valid inside loops
+- Function call argument count is checked against the declaration
+- Arithmetic type mismatches emit warnings (not hard errors, since HOOP is dynamically typed at runtime)
+
+On initialization, `_define_builtins` registers all built-in functions into the global scope with their expected return types and whether they're variadic. This is what allows calls to `display`, `length`, `input`, etc. to pass semantic validation without being flagged as undefined.
 
 ---
 
-## El lenguaje HOOP
+## Phase 4 — Execution (`interpreter.py`)
 
-### Tipos de datos
+`HoopInterpreter` is also an AST visitor. Execution is direct: each node knows how to execute itself when visited.
 
-| HOOP     | Equivalente | Ejemplo               |
-|----------|-------------|-----------------------|
-| `whole`  | int         | `data x set 42;`      |
-| `fract`  | float       | `data pi set 3.14;`   |
-| `text`   | string      | `data s set "hola";`  |
-| `logic`  | bool        | `data ok set true;`   |
-| `char`   | char        | `data c set 'A';`     |
-| `grid`   | matrix      | (tipo compuesto)      |
-| `chain`  | linked list | (tipo compuesto)      |
+Program state lives in a chain of `ExecutionContext` objects, analogous to the semantic scopes but storing actual runtime values instead of metadata. When a function is called, a new context is created as a child of the **global** context (not the current one), which prevents accidental variable capture from the caller's scope. When the function returns, the context is discarded.
 
-### Operadores
+Functions return values using Python's exception mechanism: when the interpreter hits a `ReturnNode` (the `answer` statement), it raises a `ReturnException` that bubbles up the call stack until the function-call handler catches it and extracts the value. The same pattern is used for `LoopBreak` (`halt`) and `LoopContinue` (`skip`).
 
-Todos los operadores son palabras, no símbolos:
+Objects are represented by the `HoopObject` class, which is essentially a named attribute dictionary. When `forge Clase(args)` is executed, the interpreter creates an instance, initializes its attributes using the default values declared in the class body, then looks up and runs the constructor method. `self` is implemented as a `current_instance` variable on the interpreter that gets set before executing any method and restored after.
+
+---
+
+## The HOOP Language
+
+### Data types
+
+| HOOP     | Equivalent  | Example                |
+|----------|-------------|------------------------|
+| `whole`  | int         | `data x set 42;`       |
+| `fract`  | float       | `data pi set 3.14;`    |
+| `text`   | string      | `data s set "hello";`  |
+| `logic`  | bool        | `data ok set true;`    |
+| `char`   | character   | `data c set 'A';`      |
+| `grid`   | matrix      | (composite type)       |
+| `chain`  | linked list | (composite type)       |
+
+### Operators
+
+All operators are words, not symbols:
 
 ```
 plus   minus   times   divide   mod
 equals   notequals   greater   less   greatereq   lesseq
 and   or   not
-set   (asignación)
+set   (assignment)
 ```
 
-### Control de flujo
+### Control flow
 
 ```
-# Condicional
-when puntuacion greater 90 {
-    display "Excelente";
+# Conditional
+when score greater 90 {
+    display "Excellent";
 } otherwise {
-    display "Sigue intentando";
+    display "Keep trying";
 }
 
-# Bucle con rango
+# Ranged loop
 cycle i from 1 to 10 {
     display i;
 }
 
-# Bucle while
-repeat contador less 5 {
-    contador set contador plus 1;
+# While loop
+repeat counter less 5 {
+    counter set counter plus 1;
 }
 
 # Select / case
-select opcion {
-    case 1 { display "Primera opción"; }
-    case 2 { display "Segunda opción"; }
-    default { display "Otra opción"; }
+select option {
+    case 1 { display "First option"; }
+    case 2 { display "Second option"; }
+    default { display "Other option"; }
 }
 ```
 
-### Funciones y clases
+### Functions and classes
 
 ```
-action calcularArea(fract base, fract altura) {
-    data area set base times altura divide 2;
+action calculateArea(fract base, fract height) {
+    data area set base times height divide 2;
     answer area;
 }
 
-mold Rectangulo {
-    fract ancho;
-    fract alto;
+mold Rectangle {
+    fract width;
+    fract height;
 
-    action construct(fract a, fract b) {
-        self.ancho set a;
-        self.alto set b;
+    action construct(fract w, fract h) {
+        self.width set w;
+        self.height set h;
     }
 
     action area() {
-        answer self.ancho times self.alto;
+        answer self.width times self.height;
     }
 }
 
-data rect set forge Rectangulo(10.0, 5.0);
+data rect set forge Rectangle(10.0, 5.0);
 display rect.area();
 ```
 
-### Manejo de errores
+### Error handling
 
 ```
 attempt {
-    data resultado set 10 divide 0;
+    data result set 10 divide 0;
 } rescue error {
-    display "Error capturado";
+    display "Error caught";
 } ensure {
-    display "Esto siempre se ejecuta";
+    display "This always runs";
 }
 ```
 
-### Funciones built-in
+### Built-in functions
 
 `display`, `input`, `length`, `size`, `type`, `convert`, `abs`, `sqrt`, `pow`, `max`, `min`, `random`, `read`, `write`, `open`, `close`
 
@@ -216,65 +216,65 @@ attempt {
 
 ## IDE (HOOP IDLE)
 
-La interfaz gráfica está construida con Tkinter y tiene una estructura similar a VS Code: sidebar con explorador de archivos a la izquierda, editor en el centro y terminal en la parte inferior.
+The graphical interface is built with Tkinter and follows a layout similar to VS Code: a file explorer sidebar on the left, an editor in the center, and a terminal panel at the bottom.
 
-**Resaltado de sintaxis** — implementado en `syntax_highlighter.py` con expresiones regulares aplicadas en tiempo real mientras el usuario escribe. Las categorías tienen colores distintos basados en la paleta One Dark Pro: palabras clave en púrpura, tipos en rojo, operadores-palabra en cyan, built-ins en verde azulado, números en azul y comentarios/strings en verde. Los brackets se colorean por nivel de anidamiento.
+**Syntax highlighting** — implemented in `syntax_highlighter.py` using regex patterns applied in real time as the user types. Each token category gets a distinct color based on the One Dark Pro palette: keywords in purple, types in red, word operators in cyan, built-ins in teal, numbers in blue, and comments/strings in green. Brackets are colored by nesting level.
 
-**Terminal con pestañas** — la pestaña PROBLEMAS muestra los errores y advertencias de cada fase de compilación con sus ubicaciones. La pestaña OUTPUT muestra la salida del programa al ejecutarse.
+**Tabbed terminal** — the PROBLEMS tab shows errors and warnings from each compilation phase with their file locations. The OUTPUT tab shows the program's runtime output.
 
-**Flujo compilar vs ejecutar** — el botón Compilar corre solo las fases 1, 2 y 3 y reporta errores sin ejecutar. El botón Ejecutar corre las cuatro fases y muestra la salida en el terminal.
+**Compile vs Run flow** — the Compile button runs only phases 1, 2 and 3 and reports any errors without executing the program. The Run button runs all four phases and streams output to the terminal.
 
-**Gestión de archivos** — el sidebar soporta crear archivos `.hoop`, crear carpetas, abrir proyectos desde disco y drag & drop para reorganizar archivos dentro del explorador.
+**File management** — the sidebar supports creating `.hoop` files and folders, opening projects from disk, and drag-and-drop reordering of files within the explorer tree.
 
-**Snippets de código** — el menú Opciones incluye ejemplos y tests de todas las funcionalidades del lenguaje que se cargan directamente en el editor con un clic.
+**Code snippets** — the Options menu includes pre-written examples and tests covering all language features, which load directly into the editor with a single click.
 
 ---
 
-## Estructura del proyecto
+## Project Structure
 
 ```
 HOOP/
 ├── run_gui.py                  # Entry point
 ├── src/
 │   ├── core/
-│   │   ├── lexer.py            # Fase 1: AnalizadorLexico
-│   │   ├── parser_oficial.py   # Fase 2: ParserOficial (recursivo descendente)
-│   │   ├── semantic.py         # Fase 3: SemanticAnalyzer + tabla de símbolos
-│   │   ├── interpreter.py      # Fase 4: HoopInterpreter + ExecutionContext
-│   │   ├── ast_nodes.py        # Definición de todos los nodos del AST
+│   │   ├── lexer.py            # Phase 1: AnalizadorLexico
+│   │   ├── parser_oficial.py   # Phase 2: ParserOficial (recursive descent)
+│   │   ├── semantic.py         # Phase 3: SemanticAnalyzer + symbol table
+│   │   ├── interpreter.py      # Phase 4: HoopInterpreter + ExecutionContext
+│   │   ├── ast_nodes.py        # All AST node definitions
 │   │   └── constants/
-│   │       ├── keywords.py     # Palabras reservadas, tipos, operadores
-│   │       └── code_snippets.py # Snippets del menú Opciones
+│   │       ├── keywords.py     # Reserved words, types, operators
+│   │       └── code_snippets.py # Snippets for the Options menu
 │   └── interface/
-│       ├── main_gui.py         # Ventana principal
-│       ├── colors/colors.py    # Paleta de colores
+│       ├── main_gui.py              # Main window
+│       ├── colors/colors.py         # Color palette
 │       └── components/
-│           ├── content_area.py      # Editor + integración con el compilador
-│           ├── sidebar.py           # Explorador de archivos
-│           ├── header.py            # Barra superior + menús
-│           ├── terminal.py          # Terminal con pestañas
-│           ├── syntax_highlighter.py # Resaltado de sintaxis
-│           ├── line_numbers.py      # Numeración de líneas
-│           └── welcome_screen.py    # Pantalla de bienvenida
+│           ├── content_area.py      # Editor + compiler integration
+│           ├── sidebar.py           # File explorer
+│           ├── header.py            # Top bar + menus
+│           ├── terminal.py          # Tabbed terminal panel
+│           ├── syntax_highlighter.py # Real-time syntax highlighting
+│           ├── line_numbers.py      # Line number gutter
+│           └── welcome_screen.py    # Welcome screen
 ```
 
 ---
 
-## Instalación y uso
+## Installation and Usage
 
 ```bash
-# Clonar el repositorio
+# Clone the repository
 git clone <repo-url>
 cd HOOP
 
-# Instalar dependencias
+# Install dependencies
 pip install pillow
 
-# Lanzar el IDE
+# Launch the IDE
 python run_gui.py
 ```
 
-Para ejecutar un archivo HOOP directamente sin el IDE, los módulos del core pueden usarse de forma independiente:
+To run a HOOP file without the IDE, the core modules can be used directly:
 
 ```python
 from src.core.lexer import AnalizadorLexico
@@ -282,28 +282,28 @@ from src.core.parser_oficial import parse_tokens
 from src.core.semantic import analyze_hoop_semantics
 from src.core.interpreter import interpret_hoop
 
-with open("programa.hoop") as f:
-    codigo = f.read()
+with open("program.hoop") as f:
+    code = f.read()
 
-lexer = AnalizadorLexico(codigo)
+lexer = AnalizadorLexico(code)
 tokens = lexer.analizar()
 
-ast, errores = parse_tokens(tokens)
-valido, errores_sem, warnings = analyze_hoop_semantics(ast)
-success, error, output = interpret_hoop(ast)
+ast, syntax_errors = parse_tokens(tokens)
+valid, semantic_errors, warnings = analyze_hoop_semantics(ast)
+success, runtime_error, output = interpret_hoop(ast)
 
-for linea in output:
-    print(linea)
+for line in output:
+    print(line)
 ```
 
 ---
 
-## Limitaciones conocidas
+## Known Limitations
 
-- Herencia entre clases no implementada (cada `mold` es independiente)
-- Anidamiento de estructuras de control limitado a 3 niveles por diseño
-- Los tipos `grid` y `chain` están declarados pero su comportamiento compuesto no está completamente implementado en el intérprete
-- Sin sistema de módulos ni imports entre archivos `.hoop`
+- Class inheritance is not implemented — each `mold` is standalone
+- Control structure nesting is capped at 3 levels by design
+- The `grid` and `chain` types are declared but their composite behavior is not fully implemented in the interpreter
+- No module system or imports between `.hoop` files
 
 ---
 
